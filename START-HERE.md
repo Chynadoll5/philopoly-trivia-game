@@ -7,7 +7,7 @@ You already have the game files and the Google Sheet database.
 The game is already connected to this Apps Script URL:
 
 ```text
-https://script.google.com/macros/s/AKfycbx0y-xw_ZZWcTVTNIMcy1W_fzGuzwp_ikWcPKMtesQemgoIu4s-eWNjjq7zskie5kxP/exec
+https://script.google.com/macros/s/AKfycbwavxh7EUvWiAUBbu356EUn3LwH0EENq1tWGfTH1d_S7MBZKgPjGbihCRaWEodl8oBn/exec
 ```
 
 You only need to repeat these steps if you ever create a brand-new Apps Script deployment:
