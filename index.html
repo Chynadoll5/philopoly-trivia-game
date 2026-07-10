@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#050307">
+    <title>Family Trivia Night</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="config.js"></script>
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div>
+          <p class="kicker">Family Trivia</p>
+          <h1 id="gameTitle">Family Trivia Night</h1>
+          <p id="subtitle">Choose a category, pick a level, and answer before the buzzer.</p>
+        </div>
+        <div class="sync-panel" aria-live="polite">
+          <span id="syncStatus">Loading</span>
+          <button class="icon-text-button" id="reloadButton" type="button">Reload</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="home-view" id="homeView" aria-labelledby="categoryHeading">
+          <div class="section-row">
+            <div>
+              <p class="section-label">Categories</p>
+              <h2 id="categoryHeading">Pick a category</h2>
+            </div>
+            <button class="quiet-button" id="resetUsedButton" type="button">Reset Used</button>
+          </div>
+          <div class="category-grid" id="categoryGrid"></div>
+        </section>
+
+        <section class="question-view hidden" id="questionView" aria-labelledby="questionHeading">
+          <div class="question-topline">
+            <button class="quiet-button" id="backButton" type="button">Categories</button>
+            <div class="question-tags">
+              <span id="activeCategory">Category</span>
+              <span id="activeLevel">Level</span>
+            </div>
+          </div>
+
+          <div class="mode-switch" id="modeSwitch" role="group" aria-label="Answer mode">
+            <button class="mode-button active" id="typedModeButton" type="button">Type Answer</button>
+            <button class="mode-button" id="hostModeButton" type="button">Host Mode</button>
+          </div>
+
+          <div class="timer-row">
+            <div class="timer-dial" id="timerDial" role="timer" aria-live="polite">
+              <span id="timerValue">30</span>
+            </div>
+            <div>
+              <p class="section-label">Question</p>
+              <h2 id="questionHeading">Ready?</h2>
+              <p id="poolCount">0 left in this set</p>
+            </div>
+          </div>
+
+          <form class="answer-form" id="answerForm">
+            <label for="answerInput">Your answer</label>
+            <input id="answerInput" autocomplete="off" inputmode="text" placeholder="Type your answer">
+            <button class="primary-button" type="submit">Check</button>
+          </form>
+
+          <div class="host-controls hidden" id="hostControls">
+            <p class="section-label">Host Controls</p>
+            <div class="host-actions">
+              <button class="primary-button" id="hostCorrectButton" type="button">Correct</button>
+              <button class="secondary-button" id="hostMissedButton" type="button">Missed</button>
+            </div>
+          </div>
+
+          <div class="feedback" id="feedback" aria-live="polite"></div>
+
+          <div class="answer-panel hidden" id="answerPanel">
+            <p class="section-label">Answer</p>
+            <p id="answerText"></p>
+          </div>
+
+          <div class="question-actions">
+            <button class="primary-button" id="nextButton" type="button">Shuffle Again</button>
+            <button class="secondary-button" id="selectAgainButton" type="button">Select Again</button>
+            <button class="secondary-button" id="skipButton" type="button">Skip</button>
+            <button class="secondary-button" id="showAnswerButton" type="button">Show Answer</button>
+            <button class="quiet-button" id="restartTimerButton" type="button">Restart Timer</button>
+            <button class="quiet-button danger-button" id="endGameButton" type="button">End Game</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="difficulty-sheet hidden" id="difficultySheet" role="dialog" aria-modal="true" aria-labelledby="difficultyTitle">
+      <div class="difficulty-panel">
+        <div class="difficulty-header">
+          <div>
+            <p class="section-label">Level</p>
+            <h2 id="difficultyTitle">Choose a level</h2>
+          </div>
+          <button class="quiet-button" id="closeDifficultyButton" type="button">Close</button>
+        </div>
+        <div class="difficulty-grid">
+          <button class="difficulty-button" data-level="easy" type="button">Easy</button>
+          <button class="difficulty-button" data-level="medium" type="button">Medium</button>
+          <button class="difficulty-button" data-level="difficult" type="button">Difficult</button>
+          <button class="difficulty-button surprise" data-level="surprise" type="button">Surprise Me</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="endgame-sheet hidden" id="endGameSheet" role="dialog" aria-modal="true" aria-labelledby="endGameTitle">
+      <div class="endgame-panel">
+        <div class="difficulty-header">
+          <div>
+            <p class="section-label">Philopoly</p>
+            <h2 id="endGameTitle">End Game</h2>
+          </div>
+          <button class="quiet-button" id="closeEndGameButton" type="button">Close</button>
+        </div>
+        <p class="endgame-summary" id="endGameSummary">0 question spaces used.</p>
+        <div class="endgame-grid">
+          <button class="primary-button" id="resumeGameButton" type="button">Resume</button>
+          <button class="secondary-button" id="saveProgressButton" type="button">Save Progress</button>
+          <button class="quiet-button danger-button" id="newGameButton" type="button">New Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
