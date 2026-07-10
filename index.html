@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#050307">
-    <title>Family Trivia Night</title>
+    <title>Philopoly</title>
     <link rel="stylesheet" href="styles.css">
     <script defer src="config.js"></script>
     <script defer src="app.js"></script>
@@ -13,12 +13,13 @@
     <div class="app-shell">
       <header class="app-header">
         <div>
-          <p class="kicker">Family Trivia</p>
-          <h1 id="gameTitle">Family Trivia Night</h1>
+          <p class="kicker">Philopoly</p>
+          <h1 id="gameTitle">Philopoly</h1>
           <p id="subtitle">Choose a category, pick a level, and answer before the buzzer.</p>
         </div>
         <div class="sync-panel" aria-live="polite">
           <span id="syncStatus">Loading</span>
+          <button class="icon-text-button" id="soundButton" type="button">Sound On</button>
           <button class="icon-text-button" id="reloadButton" type="button">Reload</button>
         </div>
       </header>
@@ -30,7 +31,15 @@
               <p class="section-label">Categories</p>
               <h2 id="categoryHeading">Pick a category</h2>
             </div>
-            <button class="quiet-button" id="resetUsedButton" type="button">Reset Used</button>
+            <button class="quiet-button" id="resetUsedButton" type="button">New Game</button>
+          </div>
+          <div class="game-code-panel">
+            <label for="gameCodeInput">Game Code</label>
+            <div class="game-code-row">
+              <input id="gameCodeInput" autocomplete="off" spellcheck="false" value="game-1">
+              <button class="secondary-button" id="saveGameCodeButton" type="button">Use Code</button>
+            </div>
+            <p id="gameCodeNote">Use the same code on every phone for the same shared game.</p>
           </div>
           <div class="category-grid" id="categoryGrid"></div>
         </section>

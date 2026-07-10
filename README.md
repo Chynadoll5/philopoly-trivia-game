@@ -1,4 +1,4 @@
-# Family Trivia Game
+# Philopoly Trivia Game
 
 This folder is ready for GitHub Pages. The game is a static website, and the questions/settings come from your Google Sheet.
 
@@ -24,12 +24,16 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 
 ## Phone Play Modes
 
+- Every phone should use the same `Game Code`, such as `game-1`, when playing the same shared game.
+- In live mode, the Apps Script reserves each drawn question for that game code so multiple phones share the same used-question history.
 - `Type Answer` mode lets players type an answer and tap `Check`.
 - `Host Mode` hides the typing box and gives the host `Correct`, `Missed`, `Show Answer`, `Shuffle Again`, and `Select Again` controls.
 - `Shuffle Again` pulls another question from the same category and level.
 - `Select Again` goes back to the category screen for the next turn.
 - `End Game` stops the timer and lets you resume, save progress, or start a new game.
 - `Save Progress` keeps used questions saved on that device, which is useful when Philopoly stretches over multiple sessions.
+- `New Game` resets the shared used-question history for the current game code.
+- Tap `Sound On` once when the game opens so phone browsers allow the buzzer. The buzzer also vibrates on phones that support vibration.
 
 ## Connect The Google Sheet
 
@@ -42,15 +46,18 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 7. Set `Who has access` to `Anyone`.
 8. Click `Deploy`, approve permissions, and copy the web app URL ending in `/exec`.
 9. Open `config.js` and paste that URL into `dataUrl`.
+10. Commit the updated `config.js` to GitHub.
+
+This copy is already connected to your Apps Script web app.
 
 Example:
 
 ```js
 window.TRIVIA_CONFIG = {
-  dataUrl: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+  dataUrl: "https://script.google.com/macros/s/AKfycbx0y-xw_ZZWcTVTNIMcy1W_fzGuzwp_ikWcPKMtesQemgoIu4s-eWNjjq7zskie5kxP/exec",
   spreadsheetId: "1b6_V2o3BThSVcRt0YJG4Y_sTqerqP6Zbw6s2Ef0CVlE",
   useDemoDataWhenEmpty: true,
-  storageKey: "family-trivia-game"
+  storageKey: "philopoly-trivia-game"
 };
 ```
 

@@ -1,6 +1,6 @@
 const DEMO_DATA = {
   settings: {
-    gameTitle: "Family Trivia Night",
+    gameTitle: "Philopoly",
     subtitle: "Choose a category, pick a level, and answer before the buzzer.",
     timerSeconds: 30,
     allowSkips: true,
@@ -52,6 +52,10 @@ const state = {
   remaining: 30,
   playMode: "typed",
   allowModeSwitch: true,
+  gameCode: "game-1",
+  sharedUsedCount: 0,
+  sharedTotalCount: 0,
+  soundUnlocked: false,
   audioContext: null
 };
 
@@ -59,6 +63,7 @@ document.addEventListener("DOMContentLoaded", () => {
   cacheElements();
   bindEvents();
   loadUsedQuestions();
+  loadGameCode();
   loadGameData();
 });
 
@@ -67,8 +72,12 @@ function cacheElements() {
     "gameTitle",
     "subtitle",
     "syncStatus",
+    "soundButton",
     "reloadButton",
     "resetUsedButton",
+    "gameCodeInput",
+    "saveGameCodeButton",
+    "gameCodeNote",
     "categoryGrid",
     "homeView",
     "questionView",
@@ -111,8 +120,11 @@ function cacheElements() {
 }
 
 function bindEvents() {
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
+  els.soundButton.addEventListener("click", testSound);
   els.reloadButton.addEventListener("click", loadGameData);
   els.resetUsedButton.addEventListener("click", resetUsedQuestions);
+  els.saveGameCodeButton.addEventListener("click", saveGameCode);
   els.closeDifficultyButton.addEventListener("click", closeDifficultySheet);
   els.backButton.addEventListener("click", showHome);
   els.typedModeButton.addEventListener("click", () => setPlayMode("typed"));
@@ -143,12 +155,14 @@ async function loadGameData() {
   stopTimer();
   try {
     if (config.dataUrl) {
-      state.data = normalizePayload(await loadJsonp(config.dataUrl));
-      setStatus("Live Sheet");
+      state.data = normalizePayload(await loadJsonp(config.dataUrl, {
+        action: "data",
+        gameCode: state.gameCode
+      }));
+      setStatus(`Live: ${state.gameCode}`);
     } else if (config.useDemoDataWhenEmpty !== false) {
       state.data = normalizePayload(DEMO_DATA);
-      setStatus("Demo Mode");
-      showToast("Add your Apps Script URL in config.js when ready.");
+      setStatus("Preview");
     } else {
       throw new Error("No dataUrl set in config.js.");
     }
@@ -162,10 +176,15 @@ async function loadGameData() {
   }
 }
 
-function loadJsonp(url) {
+function loadJsonp(url, params = {}) {
   return new Promise((resolve, reject) => {
     const callbackName = `trivia_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
+    const search = new URLSearchParams({
+      ...params,
+      callback: callbackName,
+      v: String(Date.now())
+    });
     const joiner = url.includes("?") ? "&" : "?";
     const timeout = window.setTimeout(() => {
       cleanup();
@@ -188,7 +207,7 @@ function loadJsonp(url) {
       script.remove();
     }
 
-    script.src = `${url}${joiner}callback=${encodeURIComponent(callbackName)}&v=${Date.now()}`;
+    script.src = `${url}${joiner}${search.toString()}`;
     document.body.appendChild(script);
   });
 }
@@ -200,29 +219,35 @@ function normalizePayload(payload) {
       questions: (category.questions || [])
         .filter((q) => q.question && q.answer)
         .filter((q) => !isTruthy(q.blocked))
-        .map((q, index) => ({
-          id: String(q.id || `${category.name}-${index}`),
-          level: normalizeLevel(q.level),
-          question: String(q.question),
-          answer: String(q.answer),
-          acceptedVariations: Array.isArray(q.acceptedVariations)
-            ? q.acceptedVariations.map(String).filter(Boolean)
-            : splitVariations(q.acceptedVariations)
-        }))
+        .map((q, index) => normalizeQuestion(q, `${category.name}-${index}`))
     }))
     .filter((category) => category.questions.length);
 
   return {
     settings: payload.settings || {},
     categories,
+    sharedState: payload.sharedState || null,
     generatedAt: payload.generatedAt || new Date().toISOString()
+  };
+}
+
+function normalizeQuestion(question, fallbackId = "question") {
+  return {
+    id: String(question.id || fallbackId),
+    level: normalizeLevel(question.level),
+    categoryName: question.categoryName ? String(question.categoryName) : undefined,
+    question: String(question.question),
+    answer: String(question.answer),
+    acceptedVariations: Array.isArray(question.acceptedVariations)
+      ? question.acceptedVariations.map(String).filter(Boolean)
+      : splitVariations(question.acceptedVariations)
   };
 }
 
 function applySettings() {
   const settings = state.data.settings;
   state.timerSeconds = numberSetting("timerSeconds", 30);
-  els.gameTitle.textContent = textSetting("gameTitle", "Family Trivia Night");
+  els.gameTitle.textContent = textSetting("gameTitle", "Philopoly");
   els.subtitle.textContent = textSetting("subtitle", "Choose a category, pick a level, and answer before the buzzer.");
   document.title = els.gameTitle.textContent;
   setCssVar("--primary", textSetting("primaryColor", "#2B0A3D"));
@@ -238,6 +263,9 @@ function applySettings() {
   els.skipButton.hidden = !booleanSetting("allowSkips", true);
   els.showAnswerButton.hidden = !booleanSetting("showAnswerButton", true);
   els.endGameButton.hidden = !booleanSetting("showEndGameButton", true);
+  state.sharedUsedCount = Number(state.data.sharedState?.usedCount || state.used.size || 0);
+  state.sharedTotalCount = Number(state.data.sharedState?.totalCount || 0);
+  updateGameCodeNote();
   applyPlayMode();
 }
 
@@ -279,6 +307,7 @@ function closeDifficultySheet() {
 }
 
 function startRound(level) {
+  unlockAudio();
   state.selectedLevel = normalizeLevel(level);
   closeDifficultySheet();
   els.homeView.classList.add("hidden");
@@ -286,7 +315,13 @@ function startRound(level) {
   drawQuestion();
 }
 
-function drawQuestion() {
+async function drawQuestion() {
+  unlockAudio();
+  if (config.dataUrl) {
+    await drawSharedQuestion();
+    return;
+  }
+
   const pool = getCurrentPool();
   if (!pool.length) {
     stopTimer();
@@ -309,6 +344,39 @@ function drawQuestion() {
   restartTimer();
 }
 
+async function drawSharedQuestion() {
+  try {
+    setStatus(`Drawing: ${state.gameCode}`);
+    const payload = await loadJsonp(config.dataUrl, {
+      action: "draw",
+      gameCode: state.gameCode,
+      category: state.selectedCategory || "__all",
+      level: state.selectedLevel || "surprise"
+    });
+
+    if (!payload.ok || !payload.question) {
+      stopTimer();
+      clearQuestion();
+      showToast(payload.message || "No questions found for that choice.");
+      setStatus(`Live: ${state.gameCode}`);
+      return;
+    }
+
+    state.activeQuestion = normalizeQuestion(payload.question);
+    state.sharedUsedCount = Number(payload.usedCount || 0);
+    state.sharedTotalCount = Number(payload.totalCount || 0);
+    if (payload.refreshed) showToast("That question set has refreshed.");
+    renderQuestion(null, payload);
+    restartTimer();
+    setStatus(`Live: ${state.gameCode}`);
+    updateGameCodeNote();
+  } catch (error) {
+    console.error(error);
+    setStatus("Data Error");
+    showToast("Could not draw a shared question. Check the Apps Script URL.");
+  }
+}
+
 function getCurrentPool() {
   const categories = state.selectedCategory === "__all"
     ? state.data.categories
@@ -321,7 +389,7 @@ function getCurrentPool() {
   );
 }
 
-function renderQuestion(pool) {
+function renderQuestion(pool, stats = null) {
   const question = state.activeQuestion;
   els.activeCategory.textContent = question.categoryName;
   els.activeLevel.textContent = displayLevel(state.selectedLevel);
@@ -333,7 +401,7 @@ function renderQuestion(pool) {
   els.feedback.textContent = "";
   els.feedback.className = "feedback";
   applyPlayMode();
-  updatePoolCount(pool);
+  updatePoolCount(pool, stats);
 }
 
 function clearQuestion() {
@@ -345,7 +413,11 @@ function clearQuestion() {
   updatePoolCount([]);
 }
 
-function updatePoolCount(pool = getCurrentPool()) {
+function updatePoolCount(pool = getCurrentPool(), stats = null) {
+  if (stats) {
+    els.poolCount.textContent = `${Number(stats.poolRemaining || 0)} left in this set for ${state.gameCode}`;
+    return;
+  }
   const left = pool.filter((question) => !state.used.has(question.id)).length;
   els.poolCount.textContent = `${left} left in this set`;
 }
@@ -434,6 +506,23 @@ function selectAgain() {
   showToast("Choose the next turn.");
 }
 
+function loadGameCode() {
+  const saved = window.localStorage.getItem(gameCodeKey());
+  state.gameCode = normalizeGameCode(saved || "game-1");
+  els.gameCodeInput.value = state.gameCode;
+  updateGameCodeNote();
+}
+
+function saveGameCode() {
+  state.gameCode = normalizeGameCode(els.gameCodeInput.value || "game-1");
+  els.gameCodeInput.value = state.gameCode;
+  window.localStorage.setItem(gameCodeKey(), state.gameCode);
+  loadUsedQuestions();
+  updateGameCodeNote();
+  loadGameData();
+  showToast(`Using game code ${state.gameCode}.`);
+}
+
 function setPlayMode(mode) {
   state.playMode = normalizePlayMode(mode);
   window.localStorage.setItem(modeKey(), state.playMode);
@@ -457,9 +546,12 @@ function applyPlayMode() {
 
 function openEndGame() {
   stopTimer();
-  const usedCount = state.used.size;
-  const totalCount = state.data ? state.data.categories.flatMap((category) => category.questions).length : 0;
-  els.endGameSummary.textContent = `${usedCount} of ${totalCount} question spaces used on this device.`;
+  const usedCount = config.dataUrl ? state.sharedUsedCount : state.used.size;
+  const totalCount = config.dataUrl
+    ? state.sharedTotalCount
+    : state.data ? state.data.categories.flatMap((category) => category.questions).length : 0;
+  const scope = config.dataUrl ? `for ${state.gameCode}` : "on this device";
+  els.endGameSummary.textContent = `${usedCount} of ${totalCount} question spaces used ${scope}.`;
   els.endGameSheet.classList.remove("hidden");
 }
 
@@ -470,23 +562,45 @@ function closeEndGame(shouldResume) {
   }
 }
 
-function saveProgressAndExit() {
+async function saveProgressAndExit() {
+  if (config.dataUrl) {
+    await loadJsonp(config.dataUrl, {
+      action: "end",
+      gameCode: state.gameCode
+    }).catch(() => null);
+  }
   closeEndGame(false);
   showHome();
   showToast("Progress saved.");
 }
 
-function startNewGame() {
+async function startNewGame() {
   state.used.clear();
   saveUsedQuestions();
+  if (config.dataUrl) {
+    await loadJsonp(config.dataUrl, {
+      action: "reset",
+      gameCode: state.gameCode
+    }).catch(() => null);
+    state.sharedUsedCount = 0;
+    updateGameCodeNote();
+  }
   closeEndGame(false);
   showHome();
   showToast("New game started.");
 }
 
-function resetUsedQuestions() {
+async function resetUsedQuestions() {
   state.used.clear();
   saveUsedQuestions();
+  if (config.dataUrl) {
+    await loadJsonp(config.dataUrl, {
+      action: "reset",
+      gameCode: state.gameCode
+    }).catch(() => null);
+    state.sharedUsedCount = 0;
+    updateGameCodeNote();
+  }
   updatePoolCount();
   showToast("Used questions reset.");
 }
@@ -505,11 +619,33 @@ function saveUsedQuestions() {
 }
 
 function storageKey() {
-  return `${config.storageKey || "family-trivia"}:${config.spreadsheetId || "demo"}`;
+  return `${config.storageKey || "philopoly-trivia"}:${config.spreadsheetId || "demo"}:${state.gameCode}`;
 }
 
 function modeKey() {
   return `${storageKey()}:answer-mode`;
+}
+
+function gameCodeKey() {
+  return `${config.storageKey || "philopoly-trivia"}:${config.spreadsheetId || "demo"}:game-code`;
+}
+
+function unlockAudio() {
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext || state.soundUnlocked) return;
+  state.audioContext = state.audioContext || new AudioContext();
+  if (state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(() => null);
+  }
+  state.soundUnlocked = true;
+  els.soundButton.textContent = "Sound On";
+}
+
+function testSound() {
+  unlockAudio();
+  playTone("correct");
+  if ("vibrate" in navigator) navigator.vibrate(80);
+  showToast("Sound is on.");
 }
 
 function playTone(type) {
@@ -517,17 +653,37 @@ function playTone(type) {
   if (!AudioContext) return;
   state.audioContext = state.audioContext || new AudioContext();
   const context = state.audioContext;
-  const oscillator = context.createOscillator();
-  const gain = context.createGain();
-  oscillator.connect(gain);
-  gain.connect(context.destination);
-  oscillator.type = type === "buzzer" ? "sawtooth" : "triangle";
-  oscillator.frequency.value = type === "buzzer" ? 130 : 680;
-  gain.gain.setValueAtTime(0.001, context.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.26, context.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + (type === "buzzer" ? 0.7 : 0.22));
-  oscillator.start();
-  oscillator.stop(context.currentTime + (type === "buzzer" ? 0.72 : 0.24));
+  if (context.state === "suspended") {
+    context.resume().catch(() => null);
+  }
+
+  if (type === "buzzer" && "vibrate" in navigator) {
+    navigator.vibrate([240, 90, 240, 90, 340]);
+  }
+
+  const pulses = type === "buzzer"
+    ? [
+        { start: 0, duration: 0.22, frequency: 160 },
+        { start: 0.28, duration: 0.22, frequency: 120 },
+        { start: 0.56, duration: 0.34, frequency: 95 }
+      ]
+    : [{ start: 0, duration: 0.24, frequency: 720 }];
+
+  pulses.forEach((pulse) => {
+    const start = context.currentTime + pulse.start;
+    const end = start + pulse.duration;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.type = type === "buzzer" ? "sawtooth" : "triangle";
+    oscillator.frequency.setValueAtTime(pulse.frequency, start);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.exponentialRampToValueAtTime(type === "buzzer" ? 0.65 : 0.32, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, end);
+    oscillator.start(start);
+    oscillator.stop(end + 0.02);
+  });
 }
 
 function setStatus(text) {
@@ -539,6 +695,15 @@ function showToast(message) {
   els.toast.classList.remove("hidden");
   window.clearTimeout(showToast.timeout);
   showToast.timeout = window.setTimeout(() => els.toast.classList.add("hidden"), 2600);
+}
+
+function updateGameCodeNote() {
+  if (!els.gameCodeNote) return;
+  if (config.dataUrl) {
+    els.gameCodeNote.textContent = `${state.gameCode} is shared across phones. ${state.sharedUsedCount} question spaces used.`;
+  } else {
+    els.gameCodeNote.textContent = "Paste the Apps Script URL into config.js to share this code across phones.";
+  }
 }
 
 function textSetting(key, fallback) {
@@ -580,6 +745,16 @@ function normalizeLevel(level) {
 function normalizePlayMode(mode) {
   const normalized = String(mode || "typed").trim().toLowerCase();
   return normalized.startsWith("host") ? "host" : "typed";
+}
+
+function normalizeGameCode(value) {
+  const normalized = String(value || "game-1")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return normalized || "game-1";
 }
 
 function displayLevel(level) {

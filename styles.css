@@ -95,7 +95,8 @@ h2 {
 }
 
 #subtitle,
-#poolCount {
+#poolCount,
+#gameCodeNote {
   margin: 0;
   color: color-mix(in srgb, var(--cream) 82%, transparent);
   line-height: 1.35;
@@ -137,6 +138,37 @@ main {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-top: 20px;
+}
+
+.game-code-panel {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.game-code-panel label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--gold);
+  font-weight: 800;
+}
+
+.game-code-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.game-code-row input {
+  min-height: 52px;
+  padding: 0 14px;
+  color: var(--cream);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 
 .category-button {
@@ -416,6 +448,7 @@ main {
   .app-header,
   .timer-row,
   .answer-form,
+  .game-code-row,
   .question-actions,
   .endgame-grid {
     grid-template-columns: 1fr;
