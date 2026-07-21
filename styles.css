@@ -715,6 +715,9 @@ p {
 
 .rules-panel {
   width: min(1040px, 100%);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .rules-tools {
@@ -797,32 +800,41 @@ p {
   display: grid;
   grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
   gap: 16px;
+  min-height: 0;
+  height: min(560px, calc(100dvh - 216px));
   padding-top: 16px;
 }
 
 .rules-toc-box {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   align-self: start;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--background-deep);
 }
 
-.rules-toc-box summary {
+.rules-toc-title {
+  margin: 0;
   padding: 12px;
   color: var(--gold);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  cursor: pointer;
+  border-bottom: 1px solid var(--border);
 }
 
 .rules-toc {
   display: grid;
   gap: 2px;
-  max-height: 420px;
+  min-height: 0;
   overflow: auto;
   padding: 0 8px 10px;
+  align-content: start;
 }
 
 .toc-button {
@@ -859,7 +871,11 @@ p {
 
 .rules-list {
   display: grid;
+  align-content: start;
   gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .rule-book-intro,
@@ -1146,10 +1162,12 @@ p {
 
   .rules-book-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
+    height: min(640px, calc(100dvh - 216px));
   }
 
   .rules-toc {
-    max-height: 190px;
+    max-height: none;
   }
 }
 

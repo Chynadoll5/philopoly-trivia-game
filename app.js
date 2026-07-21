@@ -119,6 +119,7 @@ const state = {
   ruleBook: normalizeRuleBook(FALLBACK_RULE_BOOK),
   rulesLoaded: false,
   rulesLoading: false,
+  rulesLastLoadedAt: 0,
   ruleMatches: [],
   activeRuleMatchIndex: -1
 };
@@ -131,6 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   loadUsedQuestions();
   loadGameCode();
+  loadCachedGameData();
   loadGameData();
 });
 
@@ -240,15 +242,17 @@ function bindEvents() {
 }
 
 async function loadGameData() {
-  setStatus("Loading");
+  setStatus(state.data ? "Refreshing" : "Loading");
   stopTimer();
   clearScheduledAdvance();
   try {
     if (config.dataUrl) {
       state.data = normalizePayload(await loadJsonp(config.dataUrl, {
         action: "data",
-        gameCode: state.gameCode
+        gameCode: state.gameCode,
+        refresh: "1"
       }));
+      saveCachedGameData(state.data);
       setStatus(`Room: ${state.gameCode}`);
     } else if (config.useDemoDataWhenEmpty !== false) {
       state.data = normalizePayload(DEMO_DATA);
@@ -738,6 +742,7 @@ function saveGameCode() {
   window.localStorage.setItem(gameCodeKey(), state.gameCode);
   state.questionNumber = 0;
   loadUsedQuestions();
+  loadCachedGameData();
   updateGameCodeNote();
   loadGameData();
   showToast(`Joined ${state.gameCode}.`);
@@ -821,8 +826,46 @@ function saveUsedQuestions() {
   window.localStorage.setItem(storageKey(), JSON.stringify([...state.used]));
 }
 
+function loadCachedGameData() {
+  if (!config.dataUrl) return false;
+
+  try {
+    const raw = window.localStorage.getItem(dataCacheKey());
+    if (!raw) return false;
+    const cached = JSON.parse(raw);
+    if (!cached?.payload) return false;
+
+    state.data = normalizePayload(cached.payload);
+    applySettings();
+    renderCategories();
+    showHome();
+    setStatus(`Room: ${state.gameCode} - refreshing`);
+    return true;
+  } catch (error) {
+    console.warn("Cached questions unavailable", error);
+    return false;
+  }
+}
+
+function saveCachedGameData(payload) {
+  if (!config.dataUrl || !payload?.categories?.length) return;
+
+  try {
+    window.localStorage.setItem(dataCacheKey(), JSON.stringify({
+      savedAt: new Date().toISOString(),
+      payload
+    }));
+  } catch (error) {
+    console.warn("Could not save cached questions", error);
+  }
+}
+
 function storageKey() {
   return `${config.storageKey || "philopoly-trivia"}:${config.spreadsheetId || "demo"}:${state.gameCode}`;
+}
+
+function dataCacheKey() {
+  return `${config.storageKey || "philopoly-trivia"}:${config.spreadsheetId || "demo"}:${state.gameCode}:question-cache`;
 }
 
 function modeKey() {
@@ -947,9 +990,9 @@ function renderRuleTable(table, query) {
 }
 
 async function loadRulesBookFromBackend() {
-  if (!config.dataUrl || state.rulesLoaded || state.rulesLoading) return;
+  if (!config.dataUrl || state.rulesLoading) return;
   state.rulesLoading = true;
-  els.rulesSearchCount.textContent = "Loading rules";
+  els.rulesSearchCount.textContent = state.rulesLoaded ? "Refreshing rules" : "Loading rules";
   try {
     const payload = await loadJsonp(config.dataUrl, {
       action: "rules",
@@ -958,6 +1001,7 @@ async function loadRulesBookFromBackend() {
     if (payload?.ok && payload.rules) {
       state.ruleBook = normalizeRuleBook(payload.rules);
       state.rulesLoaded = true;
+      state.rulesLastLoadedAt = Date.now();
     } else if (payload?.message) {
       state.ruleBook = normalizeRuleBook({
         ...FALLBACK_RULE_BOOK,
@@ -1092,8 +1136,6 @@ function escapeRegExp(value) {
 function openRulesOverlay() {
   renderRules(els.rulesSearchInput.value);
   els.rulesOverlay.classList.remove("hidden");
-  const panel = els.rulesOverlay.querySelector(".modal-panel");
-  if (panel) panel.scrollTop = 0;
   loadRulesBookFromBackend();
 }
 
