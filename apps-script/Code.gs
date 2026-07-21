@@ -118,11 +118,12 @@ function parseRulesBlocks_(blocks, title, sourceUrl) {
   const intro = readRulesIntro_(blocks, firstSectionIndex);
   const sections = [];
   let current = null;
+  let autoSectionNumber = 1;
 
   const ruleBlocks = blocks.slice(firstSectionIndex);
   ruleBlocks.forEach((block, index) => {
     const text = String(block.text || "").trim();
-    const sectionHeading = text.match(/^(\d{1,2})\.\s+(.+)$/);
+    const sectionHeading = readRuleSectionHeading_(block, autoSectionNumber);
     const nextBlock = ruleBlocks[index + 1];
 
     if (sectionHeading) {
@@ -136,6 +137,7 @@ function parseRulesBlocks_(blocks, title, sourceUrl) {
         subsections: []
       };
       sections.push(current);
+      autoSectionNumber = Number(sectionHeading[1]) + 1;
       return;
     }
 
@@ -167,6 +169,26 @@ function parseRulesBlocks_(blocks, title, sourceUrl) {
     intro,
     sections
   };
+}
+
+function readRuleSectionHeading_(block, fallbackNumber) {
+  const text = String(block && block.text || "").trim();
+  if (!text || shouldSkipRulesLine_(text)) return null;
+
+  const typedNumber = text.match(/^(\d{1,2})[.)]\s+(.+)$/);
+  if (typedNumber) return [typedNumber[1], typedNumber[2].trim()];
+
+  const heading = String(block.heading || "");
+  if (!isTopLevelRulesHeading_(heading)) return null;
+  if (/^(philopoly|play hard|the official rule book|for \d+)/i.test(text)) return null;
+
+  const autoNumber = readDocxListNumber_(block) || String(fallbackNumber || 1);
+  return [autoNumber, text];
+}
+
+function isTopLevelRulesHeading_(heading) {
+  const text = String(heading || "").toLowerCase();
+  return text === "heading1" || text === "heading 1" || text === "title";
 }
 
 function readDocxRuleBlocks_(file) {
@@ -216,12 +238,25 @@ function readDocxParagraph_(paragraph, namespace) {
   const styleElement = paragraphProperties && paragraphProperties.getChild("pStyle", namespace);
   const style = styleElement ? readDocxAttribute_(styleElement, "val", namespace) : "";
   const hasNumbering = Boolean(paragraphProperties && paragraphProperties.getChild("numPr", namespace));
+  const numberingElement = paragraphProperties && paragraphProperties.getChild("numPr", namespace);
+  const listNumber = numberingElement ? readDocxNumberingValue_(numberingElement, namespace) : "";
 
   return {
     type: hasNumbering ? "listItem" : "text",
     text,
-    heading: style || ""
+    heading: style || "",
+    listNumber
   };
+}
+
+function readDocxNumberingValue_(numberingElement, namespace) {
+  const levelElement = numberingElement.getChild("ilvl", namespace);
+  const level = levelElement ? readDocxAttribute_(levelElement, "val", namespace) : "";
+  return level === "0" ? "" : "";
+}
+
+function readDocxListNumber_(block) {
+  return String(block && block.listNumber || "").trim();
 }
 
 function readDocxTableRows_(table, namespace) {
@@ -331,8 +366,9 @@ function findFirstRulesSectionIndex_(blocks) {
   blocks.forEach((block, index) => {
     const text = String(block.text || "").trim();
     if (/^table of contents$/i.test(text)) tableOfContentsIndex = index;
-    if (/^1\.\s+/.test(text)) sectionOneIndexes.push(index);
-    if (/^\d{1,2}\.\s+/.test(text)) numberedSectionIndexes.push(index);
+    const sectionHeading = readRuleSectionHeading_(block, numberedSectionIndexes.length + 1);
+    if (sectionHeading && sectionHeading[1] === "1") sectionOneIndexes.push(index);
+    if (sectionHeading) numberedSectionIndexes.push(index);
   });
 
   if (tableOfContentsIndex >= 0) {
