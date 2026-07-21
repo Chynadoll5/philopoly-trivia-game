@@ -220,7 +220,8 @@ function readDocxRuleBlocks_(file) {
 }
 
 function readDocxDocumentXml_(file) {
-  const blobs = Utilities.unzip(file.getBlob());
+  const docxBlob = file.getBlob().setContentType("application/zip");
+  const blobs = Utilities.unzip(docxBlob);
   const documentBlob = blobs.find((blob) => blob.getName() === "word/document.xml");
 
   if (!documentBlob) {
