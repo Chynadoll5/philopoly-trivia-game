@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script defer src="config.js"></script>
+    <script defer src="rules-data.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -78,6 +79,11 @@
             <span class="seconds-label" id="secondsLabel">Seconds</span>
           </div>
 
+          <div class="start-gate hidden" id="startGate">
+            <p class="section-label">Question ready</p>
+            <button class="button button-gold start-question-button" id="startQuestionButton" type="button">Start question</button>
+          </div>
+
           <h2 class="question-text" id="questionHeading">Ready?</h2>
           <p class="pool-count" id="poolCount">Question 0 · 0 left in this set</p>
 
@@ -96,7 +102,7 @@
             <p id="answerText"></p>
           </div>
 
-          <div class="utility-links">
+          <div class="utility-links" id="utilityLinks">
             <button class="text-link" id="showAnswerButton" type="button">Show answer</button>
             <button class="text-link" id="restartTimerButton" type="button">Restart timer</button>
             <button class="text-link" id="skipButton" type="button">Skip</button>
@@ -123,7 +129,25 @@
           </div>
           <button class="button button-outline" id="closeRulesButton" type="button">Close</button>
         </div>
-        <div class="rules-list" id="rulesList"></div>
+        <div class="rules-tools">
+          <label class="screen-reader" for="rulesSearchInput">Search the rule book</label>
+          <input id="rulesSearchInput" type="search" autocomplete="off" spellcheck="false" placeholder="Search rules, rent, jail, trivia...">
+          <div class="rules-search-status">
+            <p id="rulesSearchCount">23 sections</p>
+            <div class="rules-match-nav hidden" id="rulesMatchNav" aria-label="Search match navigation">
+              <button class="match-button" id="rulesPrevMatchButton" type="button" aria-label="Previous match">↑</button>
+              <span id="rulesMatchCount">0 / 0</span>
+              <button class="match-button" id="rulesNextMatchButton" type="button" aria-label="Next match">↓</button>
+            </div>
+          </div>
+        </div>
+        <div class="rules-book-layout">
+          <details class="rules-toc-box" open>
+            <summary>Table of contents</summary>
+            <nav class="rules-toc" id="rulesToc" aria-label="Rule book table of contents"></nav>
+          </details>
+          <div class="rules-list" id="rulesList"></div>
+        </div>
       </div>
     </div>
 

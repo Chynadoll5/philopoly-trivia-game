@@ -7,6 +7,7 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 - `index.html`, `styles.css`, `app.js`, `config.js`: the phone/tablet trivia game.
 - `apps-script/Code.gs`: the Google Apps Script bridge that reads your Sheet.
 - `philopoly_trivia_database_template.xlsx`: the spreadsheet template backup.
+- Live Google Doc rules source: https://docs.google.com/document/d/1k_VTVc7ikcT3DB_S-L3ah5m1Faguijb1K7zq-hCz7Mc/edit
 - Live Google Sheet: Philopoly Trivia Database — https://docs.google.com/spreadsheets/d/1b6_V2o3BThSVcRt0YJG4Y_sTqerqP6Zbw6s2Ef0CVlE/edit
 
 ## Google Sheet Rules
@@ -21,6 +22,14 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 - Set a category to `FALSE` on `Topic Controls` to hide that whole category.
 - Set a question row's `Blocked` value to `TRUE` to keep that specific question out of the game.
 - The `Random` cell pulls from all levels in the selected category.
+
+## Rule Book
+
+- The in-game rule book can pull live rules from the native Google Doc listed above.
+- Keep major rule sections written like `1. Welcome to Philopoly`.
+- Short subheadings such as `Doubles` or `Trivia Mode` will show as subsections.
+- Bullet rows and simple `Column | Column | Column` rows will be styled as lists and tables in the website.
+- `rules-data.js` is the built-in fallback copy if the Apps Script cannot reach the Google Doc.
 
 ## Phone Play Modes
 

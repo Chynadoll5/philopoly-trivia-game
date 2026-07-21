@@ -39,80 +39,55 @@ const LEVELS = [
   { id: "surprise", label: "Random", diamonds: "" }
 ];
 
-const RULES = [
-  {
-    icon: "target",
-    title: "Pick a space",
-    description: "Choose All categories or one category, then tap a diamond level or Random."
-  },
-  {
-    icon: "clock",
-    title: "Beat the clock",
-    description: "Answer before the timer runs out. The final five seconds click so everyone can feel the countdown."
-  },
-  {
-    icon: "microphone",
-    title: "Choose your mode",
-    description: "Type answer checks the phone. Host mode lets one person judge answers out loud."
-  },
-  {
-    icon: "trophy",
-    title: "No repeats",
-    description: "A room will not reuse a question space until every matching space has been played."
-  },
-  {
-    icon: "cards",
-    title: "Keep it fresh",
-    description: "Update the Google Sheet whenever you want new questions, answers, or accepted variations."
-  }
-];
+const FALLBACK_RULE_BOOK = window.PHILOPOLY_RULE_BOOK || {
+  title: "Philopoly Rules",
+  intro: [],
+  sections: []
+};
 
 const SOUND_OPTIONS = {
   tick: {
     title: "Timer tick",
-    defaultValue: "soft",
+    defaultValue: "sharp",
     options: [
-      { value: "soft", label: "Soft tick" },
-      { value: "heartbeat", label: "Heartbeat" },
-      { value: "clock", label: "Clock" },
+      { value: "sharp", label: "Sharp tick" },
+      { value: "double", label: "Double tick" },
       { value: "off", label: "Off" }
     ]
   },
   buzzer: {
     title: "Buzzer",
-    defaultValue: "classic",
+    defaultValue: "arena",
     options: [
-      { value: "classic", label: "Classic buzz" },
-      { value: "gong", label: "Gong" },
-      { value: "airhorn", label: "Air horn" },
-      { value: "bell", label: "Bell" }
+      { value: "arena", label: "Arena horn" },
+      { value: "siren", label: "Siren" },
+      { value: "blast", label: "Blast" }
     ]
   },
   correct: {
     title: "Correct answer",
-    defaultValue: "chime",
+    defaultValue: "fanfare",
     options: [
-      { value: "chime", label: "Chime" },
       { value: "fanfare", label: "Fanfare" },
-      { value: "applause", label: "Applause" },
-      { value: "ding", label: "Ding" }
+      { value: "jackpot", label: "Jackpot" },
+      { value: "bell", label: "Victory bell" }
     ]
   },
   missed: {
     title: "Missed answer",
-    defaultValue: "buzzer",
+    defaultValue: "wrong",
     options: [
-      { value: "womp", label: "Womp womp" },
-      { value: "thud", label: "Low thud" },
-      { value: "buzzer", label: "Buzzer" },
-      { value: "silent", label: "Silent" }
+      { value: "wrong", label: "Wrong buzzer" },
+      { value: "drop", label: "Drop" },
+      { value: "alarm", label: "Alarm" }
     ]
   }
 };
 
 const DEFAULT_SOUND_SETTINGS = {
-  volume: 0.8,
+  volume: 1,
   muted: false,
+  soundProfileVersion: "loud-v2",
   tick: SOUND_OPTIONS.tick.defaultValue,
   buzzer: SOUND_OPTIONS.buzzer.defaultValue,
   correct: SOUND_OPTIONS.correct.defaultValue,
@@ -137,9 +112,15 @@ const state = {
   gameCode: "game-1",
   sharedUsedCount: 0,
   sharedTotalCount: 0,
+  questionStarted: false,
   soundUnlocked: false,
   audioContext: null,
-  soundSettings: { ...DEFAULT_SOUND_SETTINGS }
+  soundSettings: { ...DEFAULT_SOUND_SETTINGS },
+  ruleBook: normalizeRuleBook(FALLBACK_RULE_BOOK),
+  rulesLoaded: false,
+  rulesLoading: false,
+  ruleMatches: [],
+  activeRuleMatchIndex: -1
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -164,6 +145,13 @@ function cacheElements() {
     "rulesButton",
     "closeRulesButton",
     "rulesOverlay",
+    "rulesSearchInput",
+    "rulesSearchCount",
+    "rulesMatchNav",
+    "rulesPrevMatchButton",
+    "rulesNextMatchButton",
+    "rulesMatchCount",
+    "rulesToc",
     "rulesList",
     "soundOverlay",
     "closeSoundButton",
@@ -186,6 +174,8 @@ function cacheElements() {
     "timerDial",
     "timerValue",
     "timerBar",
+    "startGate",
+    "startQuestionButton",
     "questionHeading",
     "poolCount",
     "answerForm",
@@ -198,6 +188,7 @@ function cacheElements() {
     "answerText",
     "nextButton",
     "selectAgainButton",
+    "utilityLinks",
     "skipButton",
     "showAnswerButton",
     "restartTimerButton",
@@ -213,6 +204,10 @@ function bindEvents() {
   document.addEventListener("keydown", handleKeyboard);
   els.rulesButton.addEventListener("click", openRulesOverlay);
   els.closeRulesButton.addEventListener("click", closeRulesOverlay);
+  els.rulesSearchInput.addEventListener("input", () => renderRules(els.rulesSearchInput.value));
+  els.rulesToc.addEventListener("click", handleRulesTocClick);
+  els.rulesPrevMatchButton.addEventListener("click", () => stepRuleMatch(-1));
+  els.rulesNextMatchButton.addEventListener("click", () => stepRuleMatch(1));
   els.rulesOverlay.addEventListener("click", (event) => {
     if (event.target === els.rulesOverlay) closeRulesOverlay();
   });
@@ -230,6 +225,7 @@ function bindEvents() {
   els.backButton.addEventListener("click", showHome);
   els.typedModeButton.addEventListener("click", () => setPlayMode("typed"));
   els.hostModeButton.addEventListener("click", () => setPlayMode("host"));
+  els.startQuestionButton.addEventListener("click", startQuestion);
   els.answerForm.addEventListener("submit", checkAnswer);
   els.nextButton.addEventListener("click", () => drawQuestion());
   els.selectAgainButton.addEventListener("click", selectAgain);
@@ -424,6 +420,7 @@ function startRound(categoryKey, level) {
   state.selectedLevel = normalizeLevel(level);
   els.homeView.classList.add("hidden");
   els.questionView.classList.remove("hidden");
+  setQuestionLoading();
   drawQuestion();
 }
 
@@ -455,7 +452,7 @@ async function drawQuestion() {
   state.questionNumber += 1;
   saveUsedQuestions();
   renderQuestion(pool);
-  restartTimer();
+  prepareQuestionStart();
   updateGameCodeNote();
 }
 
@@ -486,7 +483,7 @@ async function drawSharedQuestion() {
     state.questionNumber += 1;
     if (payload.refreshed) showToast("That question set has refreshed.");
     renderQuestion(null, payload);
-    restartTimer();
+    prepareQuestionStart();
     setStatus(`Room: ${state.gameCode}`);
     updateGameCodeNote();
   } catch (error) {
@@ -527,8 +524,59 @@ function renderQuestion(pool, stats = null) {
   updatePoolCount(pool, stats);
 }
 
+function setQuestionLoading() {
+  state.questionStarted = false;
+  stopTimer();
+  clearScheduledAdvance();
+  els.questionView.classList.add("awaiting-start");
+  els.startGate.classList.add("hidden");
+  els.questionHeading.textContent = "Loading question...";
+  els.poolCount.textContent = "Getting the next question space.";
+  els.answerForm.classList.add("hidden");
+  els.hostControls.classList.add("hidden");
+  els.utilityLinks.classList.add("hidden");
+  els.answerPanel.classList.add("hidden");
+  els.feedback.textContent = "";
+  state.remaining = state.timerSeconds;
+  renderTimer();
+}
+
+function prepareQuestionStart() {
+  if (!state.activeQuestion) return;
+  state.questionStarted = false;
+  stopTimer();
+  clearScheduledAdvance();
+  state.remaining = state.timerSeconds;
+  renderTimer();
+  els.questionView.classList.add("awaiting-start");
+  els.startGate.classList.remove("hidden");
+  els.questionHeading.textContent = "Question ready.";
+  els.feedback.textContent = "";
+  els.answerForm.classList.add("hidden");
+  els.hostControls.classList.add("hidden");
+  els.utilityLinks.classList.add("hidden");
+  els.answerPanel.classList.add("hidden");
+  els.startQuestionButton.focus({ preventScroll: true });
+}
+
+function startQuestion() {
+  if (!state.activeQuestion || state.questionStarted) return;
+  unlockAudio();
+  state.questionStarted = true;
+  els.questionView.classList.remove("awaiting-start");
+  els.startGate.classList.add("hidden");
+  els.questionHeading.innerHTML = formatQuestionText(state.activeQuestion.question);
+  els.utilityLinks.classList.remove("hidden");
+  applyPlayMode();
+  restartTimer();
+}
+
 function clearQuestion() {
   state.activeQuestion = null;
+  state.questionStarted = false;
+  els.questionView.classList.remove("awaiting-start");
+  els.startGate.classList.add("hidden");
+  els.utilityLinks.classList.remove("hidden");
   els.activeCategory.textContent = state.selectedCategory === "__all" ? "All categories" : state.selectedCategory || "Category";
   els.activeLevel.textContent = displayLevel(state.selectedLevel || "surprise");
   els.questionHeading.textContent = "No question available.";
@@ -553,7 +601,7 @@ function updatePoolCount(pool = getCurrentPool(), stats = null) {
 
 function checkAnswer(event) {
   event.preventDefault();
-  if (!state.activeQuestion) return;
+  if (!state.activeQuestion || !state.questionStarted) return;
   const typed = normalizeAnswer(els.answerInput.value);
   const accepted = [
     state.activeQuestion.answer,
@@ -570,7 +618,7 @@ function checkAnswer(event) {
 }
 
 function markHostResult(isCorrect) {
-  if (!state.activeQuestion) return;
+  if (!state.activeQuestion || !state.questionStarted) return;
   markResult(isCorrect);
 }
 
@@ -604,7 +652,7 @@ function clearScheduledAdvance() {
 }
 
 function revealAnswer() {
-  if (!state.activeQuestion) return;
+  if (!state.activeQuestion || !state.questionStarted) return;
   els.answerPanel.classList.remove("hidden");
   els.answerInput.disabled = true;
   stopTimer();
@@ -612,7 +660,7 @@ function revealAnswer() {
 }
 
 function restartTimer() {
-  if (!state.activeQuestion) return;
+  if (!state.activeQuestion || !state.questionStarted) return;
   clearScheduledAdvance();
   stopTimer();
   state.remaining = state.timerSeconds;
@@ -655,6 +703,9 @@ function renderTimer() {
 function showHome() {
   stopTimer();
   clearScheduledAdvance();
+  state.questionStarted = false;
+  els.startGate.classList.add("hidden");
+  els.utilityLinks.classList.remove("hidden");
   closeRulesOverlay();
   closeSoundOverlay();
   els.homeView.classList.remove("hidden");
@@ -670,6 +721,7 @@ function selectAgain() {
 function handleSkip() {
   if (!state.activeQuestion) return;
   showToast("Skipped.");
+  setQuestionLoading();
   drawQuestion();
 }
 
@@ -698,6 +750,14 @@ function setPlayMode(mode) {
 }
 
 function applyPlayMode() {
+  if (!state.questionStarted) {
+    els.answerForm.classList.add("hidden");
+    els.hostControls.classList.add("hidden");
+    els.typedModeButton.classList.toggle("active", state.playMode !== "host");
+    els.hostModeButton.classList.toggle("active", state.playMode === "host");
+    return;
+  }
+
   const isHost = state.playMode === "host";
   els.answerForm.classList.toggle("hidden", isHost);
   els.hostControls.classList.toggle("hidden", !isHost);
@@ -777,20 +837,264 @@ function soundKey() {
   return `${config.storageKey || "philopoly-trivia"}:sound-settings`;
 }
 
-function renderRules() {
-  els.rulesList.innerHTML = RULES.map((rule) => `
-    <article class="rule-item">
-      <span class="rule-badge" aria-hidden="true">${iconSvg(rule.icon)}</span>
-      <div>
-        <h3>${escapeHtml(rule.title)}</h3>
-        <p>${escapeHtml(rule.description)}</p>
-      </div>
-    </article>
+function renderRules(query = "") {
+  const book = state.ruleBook || normalizeRuleBook(FALLBACK_RULE_BOOK);
+  const sections = book.sections || [];
+  const normalizedQuery = normalizeRuleQuery(query);
+  const rawQuery = String(query || "").trim();
+  const matches = sections.filter((section) => !normalizedQuery || ruleSearchText(section).includes(normalizedQuery));
+  const sectionWord = matches.length === 1 ? "section" : "sections";
+  state.ruleMatches = [];
+  state.activeRuleMatchIndex = -1;
+  els.rulesSearchCount.textContent = normalizedQuery
+    ? `${matches.length} of ${sections.length} ${sectionWord}`
+    : `${sections.length} sections`;
+
+  els.rulesToc.innerHTML = matches.map((section) => `
+    <button class="toc-button" type="button" data-rule-id="${ruleDomId(section)}">
+      <span class="toc-number">${escapeHtml(section.number)}</span>
+      <span>${escapeHtml(section.title)}</span>
+    </button>
   `).join("");
+
+  if (!matches.length) {
+    els.rulesList.innerHTML = `
+      <article class="rules-empty">
+        <h3>No matching rules</h3>
+        <p>Try searching for rent, jail, trivia, mortgage, building, or a property name.</p>
+      </article>
+    `;
+    updateRuleMatchNav();
+    return;
+  }
+
+  els.rulesList.innerHTML = [
+    renderRuleIntro(normalizedQuery, rawQuery, book),
+    ...matches.map((section, index) => renderRuleSection(section, index, Boolean(normalizedQuery), rawQuery))
+  ].join("");
+  updateRuleMatchNav();
+  if (state.ruleMatches.length) {
+    window.setTimeout(() => focusRuleMatch(0, false), 0);
+  }
+}
+
+function renderRuleIntro(hasSearch, query, book) {
+  if (hasSearch || !book.intro?.length) return "";
+  return `
+    <article class="rule-book-intro">
+      ${book.intro.map((paragraph) => `<p>${highlightText(paragraph, query)}</p>`).join("")}
+    </article>
+  `;
+}
+
+function renderRuleSection(section, index, forceOpen, query) {
+  return `
+    <details class="rule-section" id="${ruleDomId(section)}" ${forceOpen || index === 0 ? "open" : ""}>
+      <summary>
+        <span class="rule-number">Section ${highlightText(section.number, query)}</span>
+        <span class="rule-title">${highlightText(section.title, query)}</span>
+      </summary>
+      <div class="rule-section-body">
+        ${renderRuleBlock(section, false, query)}
+      </div>
+    </details>
+  `;
+}
+
+function renderRuleBlock(block, includeTitle = true, query = "") {
+  const parts = [];
+  if (includeTitle && block.title) {
+    parts.push(`<h3 class="rule-subheading">${highlightText(block.title, query)}</h3>`);
+  }
+  (block.body || []).forEach((paragraph) => {
+    parts.push(`<p>${highlightText(paragraph, query)}</p>`);
+  });
+  (block.lists || []).forEach((list) => {
+    if (list.title) parts.push(`<h4>${highlightText(list.title, query)}</h4>`);
+    parts.push(`
+      <ul>
+        ${(list.items || []).map((item) => `<li>${highlightText(item, query)}</li>`).join("")}
+      </ul>
+    `);
+  });
+  (block.tables || []).forEach((table) => {
+    parts.push(renderRuleTable(table, query));
+  });
+  (block.subsections || []).forEach((subsection) => {
+    parts.push(`<section class="rule-subsection">${renderRuleBlock(subsection, true, query)}</section>`);
+  });
+  return parts.join("");
+}
+
+function renderRuleTable(table, query) {
+  return `
+    <div class="rule-table-block">
+      <h4>${highlightText(table.title, query)}</h4>
+      <div class="rule-table-wrap">
+        <table>
+          <thead>
+            <tr>${(table.headers || []).map((header) => `<th>${highlightText(header, query)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${(table.rows || []).map((row) => `
+              <tr>${row.map((cell) => `<td>${highlightText(cell, query)}</td>`).join("")}</tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function loadRulesBookFromBackend() {
+  if (!config.dataUrl || state.rulesLoaded || state.rulesLoading) return;
+  state.rulesLoading = true;
+  els.rulesSearchCount.textContent = "Loading rules";
+  try {
+    const payload = await loadJsonp(config.dataUrl, {
+      action: "rules",
+      gameCode: state.gameCode
+    });
+    if (payload?.ok && payload.rules) {
+      state.ruleBook = normalizeRuleBook(payload.rules);
+      state.rulesLoaded = true;
+    } else if (payload?.message) {
+      state.ruleBook = normalizeRuleBook({
+        ...FALLBACK_RULE_BOOK,
+        intro: [
+          payload.message,
+          "The game is showing the built-in fallback rules until the live Apps Script points to a native Google Doc."
+        ]
+      });
+    }
+  } catch (error) {
+    console.warn("Rules source unavailable", error);
+  } finally {
+    state.rulesLoading = false;
+    renderRules(els.rulesSearchInput.value);
+  }
+}
+
+function handleRulesTocClick(event) {
+  const button = event.target.closest("[data-rule-id]");
+  if (!button) return;
+  const section = document.getElementById(button.dataset.ruleId);
+  if (!section) return;
+  section.open = true;
+  section.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+}
+
+function stepRuleMatch(direction) {
+  if (!state.ruleMatches.length) return;
+  const nextIndex = state.activeRuleMatchIndex < 0
+    ? 0
+    : (state.activeRuleMatchIndex + direction + state.ruleMatches.length) % state.ruleMatches.length;
+  focusRuleMatch(nextIndex, true);
+}
+
+function focusRuleMatch(index, shouldScroll) {
+  state.activeRuleMatchIndex = index;
+  document.querySelectorAll(".rule-match.current").forEach((mark) => mark.classList.remove("current"));
+  const id = state.ruleMatches[index];
+  const mark = id ? document.getElementById(id) : null;
+  if (!mark) {
+    updateRuleMatchNav();
+    return;
+  }
+  const section = mark.closest("details");
+  if (section) section.open = true;
+  mark.classList.add("current");
+  if (shouldScroll) {
+    mark.scrollIntoView({ block: "center", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  }
+  updateRuleMatchNav();
+}
+
+function updateRuleMatchNav() {
+  const total = state.ruleMatches.length;
+  els.rulesMatchNav.classList.toggle("hidden", total === 0);
+  els.rulesPrevMatchButton.disabled = total === 0;
+  els.rulesNextMatchButton.disabled = total === 0;
+  const current = total && state.activeRuleMatchIndex >= 0 ? state.activeRuleMatchIndex + 1 : 0;
+  els.rulesMatchCount.textContent = `${current} / ${total}`;
+}
+
+function ruleDomId(section) {
+  return `rule-section-${String(section.number || section.title).replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase()}`;
+}
+
+function ruleSearchText(block) {
+  return normalizeRuleQuery([
+    block.number,
+    block.title,
+    ...(block.body || []),
+    ...(block.lists || []).flatMap((list) => [list.title, ...(list.items || [])]),
+    ...(block.tables || []).flatMap((table) => [table.title, ...(table.headers || []), ...(table.rows || []).flat()]),
+    ...(block.subsections || []).map(ruleSearchText)
+  ].filter(Boolean).join(" "));
+}
+
+function normalizeRuleBook(book) {
+  return {
+    title: String(book?.title || "Philopoly Rule Book"),
+    sourceName: String(book?.sourceName || ""),
+    sourceUrl: String(book?.sourceUrl || ""),
+    intro: Array.isArray(book?.intro) ? book.intro.map(String).filter(Boolean) : [],
+    sections: Array.isArray(book?.sections)
+      ? book.sections.map((section, index) => ({
+        ...section,
+        number: String(section.number || index + 1),
+        title: String(section.title || `Section ${index + 1}`),
+        body: Array.isArray(section.body) ? section.body.map(String).filter(Boolean) : [],
+        lists: Array.isArray(section.lists) ? section.lists : [],
+        tables: Array.isArray(section.tables) ? section.tables : [],
+        subsections: Array.isArray(section.subsections) ? section.subsections : []
+      }))
+      : []
+  };
+}
+
+function normalizeRuleQuery(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9$]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function highlightText(value, query) {
+  const text = String(value ?? "");
+  const needle = String(query || "").trim();
+  if (!needle) return escapeHtml(text);
+  const regex = new RegExp(escapeRegExp(needle), "gi");
+  let result = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    result += escapeHtml(text.slice(lastIndex, match.index));
+    const id = `rule-match-${state.ruleMatches.length}`;
+    state.ruleMatches.push(id);
+    result += `<mark class="rule-match" id="${id}">${escapeHtml(match[0])}</mark>`;
+    lastIndex = match.index + match[0].length;
+    if (match[0].length === 0) regex.lastIndex += 1;
+  }
+
+  result += escapeHtml(text.slice(lastIndex));
+  return result;
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function openRulesOverlay() {
+  renderRules(els.rulesSearchInput.value);
   els.rulesOverlay.classList.remove("hidden");
+  const panel = els.rulesOverlay.querySelector(".modal-panel");
+  if (panel) panel.scrollTop = 0;
+  loadRulesBookFromBackend();
 }
 
 function closeRulesOverlay() {
@@ -855,12 +1159,21 @@ function handleMuteToggle() {
 function loadSoundSettings() {
   try {
     const saved = JSON.parse(window.localStorage.getItem(soundKey()) || "{}");
-    state.soundSettings = {
-      ...DEFAULT_SOUND_SETTINGS,
-      ...saved,
-      volume: clamp(Number(saved.volume ?? DEFAULT_SOUND_SETTINGS.volume), 0, 1),
-      muted: Boolean(saved.muted)
-    };
+    state.soundSettings = saved.soundProfileVersion === DEFAULT_SOUND_SETTINGS.soundProfileVersion
+      ? {
+        ...DEFAULT_SOUND_SETTINGS,
+        ...saved,
+        volume: clamp(Number(saved.volume ?? DEFAULT_SOUND_SETTINGS.volume), 0, 1),
+        muted: Boolean(saved.muted)
+      }
+      : {
+        ...DEFAULT_SOUND_SETTINGS,
+        muted: Boolean(saved.muted)
+      };
+    Object.entries(SOUND_OPTIONS).forEach(([channel, definition]) => {
+      const valid = definition.options.some((option) => option.value === state.soundSettings[channel]);
+      if (!valid) state.soundSettings[channel] = definition.defaultValue;
+    });
   } catch {
     state.soundSettings = { ...DEFAULT_SOUND_SETTINGS };
   }
@@ -881,13 +1194,14 @@ function unlockAudio() {
 }
 
 function playTone(channel, overrideValue) {
+  unlockAudio();
   const value = overrideValue || state.soundSettings[channel];
   if (!value || value === "off" || value === "silent" || state.soundSettings.muted || state.soundSettings.volume <= 0) return;
   const context = getAudioContext();
   if (!context) return;
 
   if ((channel === "buzzer" || channel === "missed") && "vibrate" in navigator) {
-    navigator.vibrate(channel === "buzzer" ? [240, 90, 240, 90, 320] : [180, 80, 180]);
+    navigator.vibrate(channel === "buzzer" ? [280, 80, 280, 80, 420] : [220, 70, 220]);
   }
 
   if (channel === "tick") playTick(value, context);
@@ -907,98 +1221,98 @@ function getAudioContext() {
 }
 
 function playTick(value, context) {
-  if (value === "heartbeat") {
+  if (value === "double") {
     playSequence(context, [
-      { start: 0, duration: 0.07, frequency: 110, type: "sine", gain: 0.22 },
-      { start: 0.12, duration: 0.08, frequency: 92, type: "sine", gain: 0.18 }
-    ]);
-    return;
-  }
-  if (value === "clock") {
-    playSequence(context, [
-      { start: 0, duration: 0.035, frequency: 1180, type: "square", gain: 0.16 },
-      { start: 0.09, duration: 0.035, frequency: 760, type: "square", gain: 0.12 }
+      { start: 0, duration: 0.045, frequency: 1450, type: "square", gain: 0.36 },
+      { start: 0.09, duration: 0.045, frequency: 980, type: "square", gain: 0.28 }
     ]);
     return;
   }
   playSequence(context, [
-    { start: 0, duration: 0.04, frequency: 980, type: "square", gain: 0.12 }
+    { start: 0, duration: 0.06, frequency: 1600, type: "square", gain: 0.36 }
   ]);
 }
 
 function playBuzzer(value, context) {
-  if (value === "gong") {
+  if (value === "siren") {
     playSequence(context, [
-      { start: 0, duration: 0.8, frequency: 180, endFrequency: 92, type: "triangle", gain: 0.48, attack: 0.02 }
+      { start: 0, duration: 0.28, frequency: 740, endFrequency: 360, type: "sawtooth", gain: 0.62 },
+      { start: 0.3, duration: 0.28, frequency: 360, endFrequency: 780, type: "sawtooth", gain: 0.62 },
+      { start: 0.6, duration: 0.34, frequency: 780, endFrequency: 320, type: "sawtooth", gain: 0.64 }
     ]);
     return;
   }
-  if (value === "airhorn") {
+  if (value === "blast") {
     playSequence(context, [
-      { start: 0, duration: 0.42, frequency: 360, endFrequency: 250, type: "sawtooth", gain: 0.38 },
-      { start: 0.48, duration: 0.34, frequency: 430, endFrequency: 280, type: "sawtooth", gain: 0.34 }
+      { start: 0, duration: 0.38, frequency: 120, endFrequency: 75, type: "sawtooth", gain: 0.72, attack: 0.01 },
+      { start: 0.06, duration: 0.38, frequency: 240, endFrequency: 90, type: "square", gain: 0.42, attack: 0.01 },
+      { start: 0.5, duration: 0.32, frequency: 95, endFrequency: 65, type: "sawtooth", gain: 0.72, attack: 0.01 }
+    ]);
+    playNoiseBurst(context, 0, 0.18, 0.34);
+    playNoiseBurst(context, 0.5, 0.16, 0.3);
+    return;
+  }
+  playArenaHorn(context);
+}
+
+function playCorrect(value, context) {
+  if (value === "jackpot") {
+    playSequence(context, [
+      { start: 0, duration: 0.09, frequency: 880, type: "square", gain: 0.34 },
+      { start: 0.1, duration: 0.09, frequency: 1174.66, type: "square", gain: 0.34 },
+      { start: 0.2, duration: 0.09, frequency: 1567.98, type: "square", gain: 0.36 },
+      { start: 0.33, duration: 0.22, frequency: 2093, type: "triangle", gain: 0.34 }
     ]);
     return;
   }
   if (value === "bell") {
     playSequence(context, [
-      { start: 0, duration: 0.5, frequency: 880, type: "sine", gain: 0.28 },
-      { start: 0.03, duration: 0.56, frequency: 1320, type: "sine", gain: 0.16 }
-    ]);
-    return;
-  }
-  playClassicBuzzer(context);
-}
-
-function playCorrect(value, context) {
-  if (value === "fanfare") {
-    playSequence(context, [
-      { start: 0, duration: 0.12, frequency: 523.25, type: "triangle", gain: 0.2 },
-      { start: 0.14, duration: 0.12, frequency: 659.25, type: "triangle", gain: 0.24 },
-      { start: 0.28, duration: 0.28, frequency: 783.99, type: "triangle", gain: 0.28 }
-    ]);
-    return;
-  }
-  if (value === "applause") {
-    for (let index = 0; index < 9; index += 1) {
-      playNoiseBurst(context, index * 0.055, 0.045, 0.12 + (index % 3) * 0.03);
-    }
-    return;
-  }
-  if (value === "ding") {
-    playSequence(context, [
-      { start: 0, duration: 0.28, frequency: 1046.5, type: "sine", gain: 0.25 }
+      { start: 0, duration: 0.55, frequency: 1046.5, type: "sine", gain: 0.42 },
+      { start: 0.03, duration: 0.65, frequency: 2093, type: "sine", gain: 0.22 }
     ]);
     return;
   }
   playSequence(context, [
-    { start: 0, duration: 0.16, frequency: 659.25, type: "sine", gain: 0.22 },
-    { start: 0.17, duration: 0.24, frequency: 987.77, type: "sine", gain: 0.26 }
+    { start: 0, duration: 0.12, frequency: 523.25, type: "triangle", gain: 0.34 },
+    { start: 0.13, duration: 0.12, frequency: 659.25, type: "triangle", gain: 0.38 },
+    { start: 0.26, duration: 0.12, frequency: 783.99, type: "triangle", gain: 0.42 },
+    { start: 0.41, duration: 0.28, frequency: 1046.5, type: "triangle", gain: 0.44 }
   ]);
 }
 
 function playMissed(value, context) {
-  if (value === "thud") {
+  if (value === "drop") {
     playSequence(context, [
-      { start: 0, duration: 0.18, frequency: 82, endFrequency: 58, type: "sine", gain: 0.42, attack: 0.01 }
+      { start: 0, duration: 0.42, frequency: 260, endFrequency: 55, type: "sawtooth", gain: 0.64, attack: 0.01 },
+      { start: 0.02, duration: 0.28, frequency: 130, endFrequency: 45, type: "square", gain: 0.38, attack: 0.01 }
     ]);
     return;
   }
-  if (value === "buzzer") {
-    playClassicBuzzer(context);
+  if (value === "alarm") {
+    playSequence(context, [
+      { start: 0, duration: 0.15, frequency: 520, type: "square", gain: 0.5 },
+      { start: 0.18, duration: 0.15, frequency: 320, type: "square", gain: 0.52 },
+      { start: 0.36, duration: 0.16, frequency: 520, type: "square", gain: 0.5 }
+    ]);
     return;
   }
+  playWrongBuzzer(context);
+}
+
+function playArenaHorn(context) {
   playSequence(context, [
-    { start: 0, duration: 0.34, frequency: 220, endFrequency: 110, type: "sawtooth", gain: 0.28 },
-    { start: 0.36, duration: 0.32, frequency: 185, endFrequency: 92, type: "sawtooth", gain: 0.24 }
+    { start: 0, duration: 0.42, frequency: 185, endFrequency: 140, type: "sawtooth", gain: 0.72 },
+    { start: 0.05, duration: 0.42, frequency: 92, endFrequency: 70, type: "square", gain: 0.38 },
+    { start: 0.5, duration: 0.48, frequency: 165, endFrequency: 118, type: "sawtooth", gain: 0.72 },
+    { start: 0.55, duration: 0.48, frequency: 82, endFrequency: 58, type: "square", gain: 0.38 }
   ]);
 }
 
-function playClassicBuzzer(context) {
+function playWrongBuzzer(context) {
   playSequence(context, [
-    { start: 0, duration: 0.22, frequency: 160, type: "sawtooth", gain: 0.42 },
-    { start: 0.28, duration: 0.22, frequency: 120, type: "sawtooth", gain: 0.44 },
-    { start: 0.56, duration: 0.34, frequency: 95, type: "sawtooth", gain: 0.46 }
+    { start: 0, duration: 0.18, frequency: 185, type: "sawtooth", gain: 0.7 },
+    { start: 0.22, duration: 0.18, frequency: 145, type: "sawtooth", gain: 0.72 },
+    { start: 0.44, duration: 0.24, frequency: 105, type: "sawtooth", gain: 0.74 }
   ]);
 }
 
@@ -1017,7 +1331,7 @@ function playSequence(context, pulses) {
       oscillator.frequency.linearRampToValueAtTime(pulse.endFrequency, end);
     }
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * (pulse.gain || 0.22)), start + (pulse.attack || 0.018));
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * (pulse.gain || 0.4)), start + (pulse.attack || 0.014));
     gain.gain.exponentialRampToValueAtTime(0.0001, end);
     oscillator.start(start);
     oscillator.stop(end + 0.03);
@@ -1196,6 +1510,10 @@ function iconSvg(name) {
 function clamp(value, min, max) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches || false;
 }
 
 function escapeHtml(value) {
