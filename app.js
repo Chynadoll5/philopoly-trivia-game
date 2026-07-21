@@ -112,6 +112,8 @@ const state = {
   gameCode: "game-1",
   sharedUsedCount: 0,
   sharedTotalCount: 0,
+  dataLoading: false,
+  dataRefreshTimerId: null,
   questionStarted: false,
   soundUnlocked: false,
   audioContext: null,
@@ -132,8 +134,12 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   loadUsedQuestions();
   loadGameCode();
-  loadCachedGameData();
-  loadGameData();
+  const hasFastData = loadCachedGameData() || loadBundledGameData();
+  if (hasFastData) {
+    scheduleGameDataRefresh(600);
+  } else {
+    loadGameData();
+  }
 });
 
 function cacheElements() {
@@ -218,7 +224,7 @@ function bindEvents() {
   els.soundOverlay.addEventListener("click", (event) => {
     if (event.target === els.soundOverlay) closeSoundOverlay();
   });
-  els.reloadButton.addEventListener("click", loadGameData);
+  els.reloadButton.addEventListener("click", () => loadGameData({ forceRefresh: true }));
   els.resetUsedButton.addEventListener("click", startNewGame);
   els.saveGameCodeButton.addEventListener("click", saveGameCode);
   els.gameCodeInput.addEventListener("keydown", (event) => {
@@ -241,17 +247,26 @@ function bindEvents() {
   els.muteToggle.addEventListener("change", handleMuteToggle);
 }
 
-async function loadGameData() {
+async function loadGameData(options = {}) {
+  const { background = false, forceRefresh = false } = options;
+  if (state.dataLoading) return;
+
+  state.dataLoading = true;
   setStatus(state.data ? "Refreshing" : "Loading");
-  stopTimer();
-  clearScheduledAdvance();
+  if (!background) {
+    stopTimer();
+    clearScheduledAdvance();
+  }
+
   try {
     if (config.dataUrl) {
-      state.data = normalizePayload(await loadJsonp(config.dataUrl, {
+      const params = {
         action: "data",
-        gameCode: state.gameCode,
-        refresh: "1"
-      }));
+        gameCode: state.gameCode
+      };
+      if (forceRefresh) params.refresh = "1";
+
+      state.data = normalizePayload(await loadJsonp(config.dataUrl, params));
       saveCachedGameData(state.data);
       setStatus(`Room: ${state.gameCode}`);
     } else if (config.useDemoDataWhenEmpty !== false) {
@@ -262,12 +277,28 @@ async function loadGameData() {
     }
     applySettings();
     renderCategories();
-    showHome();
+    if (!background || els.questionView.classList.contains("hidden")) {
+      showHome();
+    }
   } catch (error) {
     console.error(error);
-    setStatus("Data error");
-    showToast("Could not load questions. Check the Apps Script URL.");
+    if (state.data) {
+      setStatus(`Room: ${state.gameCode}`);
+    } else {
+      setStatus("Data error");
+      showToast("Could not load questions. Check the Apps Script URL.");
+    }
+  } finally {
+    state.dataLoading = false;
   }
+}
+
+function scheduleGameDataRefresh(delay = 0) {
+  if (!config.dataUrl) return;
+  window.clearTimeout(state.dataRefreshTimerId);
+  state.dataRefreshTimerId = window.setTimeout(() => {
+    loadGameData({ background: true });
+  }, delay);
 }
 
 function loadJsonp(url, params = {}) {
@@ -431,13 +462,13 @@ function startRound(categoryKey, level) {
 async function drawQuestion() {
   unlockAudio();
   clearScheduledAdvance();
-  if (config.dataUrl) {
-    await drawSharedQuestion();
-    return;
-  }
 
   const pool = getCurrentPool();
   if (!pool.length) {
+    if (config.dataUrl && !state.data) {
+      await drawSharedQuestion();
+      return;
+    }
     stopTimer();
     clearQuestion();
     showToast("No questions found for that choice.");
@@ -453,6 +484,8 @@ async function drawQuestion() {
 
   state.activeQuestion = available[Math.floor(Math.random() * available.length)];
   state.used.add(state.activeQuestion.id);
+  state.sharedUsedCount = state.used.size;
+  state.sharedTotalCount = totalQuestionCount();
   state.questionNumber += 1;
   saveUsedQuestions();
   renderQuestion(pool);
@@ -742,9 +775,13 @@ function saveGameCode() {
   window.localStorage.setItem(gameCodeKey(), state.gameCode);
   state.questionNumber = 0;
   loadUsedQuestions();
-  loadCachedGameData();
+  const hasFastData = loadCachedGameData() || loadBundledGameData();
   updateGameCodeNote();
-  loadGameData();
+  if (hasFastData) {
+    scheduleGameDataRefresh(250);
+  } else {
+    loadGameData();
+  }
   showToast(`Joined ${state.gameCode}.`);
 }
 
@@ -781,7 +818,7 @@ async function saveProgressAndExit() {
   stopTimer();
   clearScheduledAdvance();
   if (config.dataUrl) {
-    await loadJsonp(config.dataUrl, {
+    loadJsonp(config.dataUrl, {
       action: "end",
       gameCode: state.gameCode
     }).catch(() => null);
@@ -797,7 +834,7 @@ async function startNewGame() {
   state.questionNumber = 0;
   saveUsedQuestions();
   if (config.dataUrl) {
-    await loadJsonp(config.dataUrl, {
+    loadJsonp(config.dataUrl, {
       action: "reset",
       gameCode: state.gameCode
     }).catch(() => null);
@@ -843,6 +880,23 @@ function loadCachedGameData() {
     return true;
   } catch (error) {
     console.warn("Cached questions unavailable", error);
+    return false;
+  }
+}
+
+function loadBundledGameData() {
+  if (!window.PHILOPOLY_QUESTION_CACHE?.categories?.length) return false;
+
+  try {
+    state.data = normalizePayload(window.PHILOPOLY_QUESTION_CACHE);
+    applySettings();
+    renderCategories();
+    showHome();
+    saveCachedGameData(state.data);
+    setStatus(`Room: ${state.gameCode} - updating`);
+    return true;
+  } catch (error) {
+    console.warn("Bundled questions unavailable", error);
     return false;
   }
 }
@@ -913,7 +967,7 @@ function renderRules(query = "") {
 
   els.rulesList.innerHTML = [
     renderRuleIntro(normalizedQuery, rawQuery, book),
-    ...matches.map((section, index) => renderRuleSection(section, index, Boolean(normalizedQuery), rawQuery))
+    ...matches.map((section) => renderRuleSection(section, rawQuery))
   ].join("");
   updateRuleMatchNav();
   if (state.ruleMatches.length) {
@@ -930,9 +984,9 @@ function renderRuleIntro(hasSearch, query, book) {
   `;
 }
 
-function renderRuleSection(section, index, forceOpen, query) {
+function renderRuleSection(section, query) {
   return `
-    <details class="rule-section" id="${ruleDomId(section)}" ${forceOpen || index === 0 ? "open" : ""}>
+    <details class="rule-section" id="${ruleDomId(section)}" open>
       <summary>
         <span class="rule-number">Section ${highlightText(section.number, query)}</span>
         <span class="rule-title">${highlightText(section.title, query)}</span>
@@ -1425,7 +1479,7 @@ function showToast(message) {
 
 function updateGameCodeNote() {
   if (!els.gameCodeNote) return;
-  const usedCount = config.dataUrl ? state.sharedUsedCount : state.used.size;
+  const usedCount = state.used.size;
   els.gameCodeNote.textContent = `Tap any cell to start · ${usedCount} question spaces used on ${state.gameCode}`;
 }
 

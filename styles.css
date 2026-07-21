@@ -714,7 +714,9 @@ p {
 }
 
 .rules-panel {
-  width: min(1040px, 100%);
+  width: min(1480px, calc(100vw - 24px));
+  height: min(920px, calc(100dvh - 24px));
+  max-height: calc(100dvh - 24px);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   overflow: hidden;
@@ -798,20 +800,19 @@ p {
 
 .rules-book-layout {
   display: grid;
-  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
-  height: min(560px, calc(100dvh - 216px));
-  padding-top: 16px;
+  padding-top: 12px;
 }
 
 .rules-toc-box {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-self: start;
-  height: 100%;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: 3px;
   background: var(--background-deep);
@@ -830,10 +831,11 @@ p {
 
 .rules-toc {
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 4px;
   min-height: 0;
-  overflow: auto;
-  padding: 0 8px 10px;
+  overflow: visible;
+  padding: 8px;
   align-content: start;
 }
 
@@ -842,7 +844,7 @@ p {
   grid-template-columns: 24px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
-  min-height: 36px;
+  min-height: 34px;
   padding: 6px 7px;
   color: var(--lavender);
   background: transparent;
@@ -1162,12 +1164,11 @@ p {
 
   .rules-book-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
-    height: min(640px, calc(100dvh - 216px));
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .rules-toc {
-    max-height: none;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 }
 
