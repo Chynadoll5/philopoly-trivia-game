@@ -37,7 +37,13 @@ loadGameData = async function loadGameDataFast(options = {}) {
   }
 };
 
-renderRuleSection = function renderRuleSectionOpen(section, index, forceOpen, query) {
+renderRuleSection = function renderRuleSectionOpen(section, queryOrIndex, forceOpen, queryFromOldCall) {
+  const query = typeof queryFromOldCall === "string"
+    ? queryFromOldCall
+    : typeof queryOrIndex === "string"
+      ? queryOrIndex
+      : "";
+
   return `
     <details class="rule-section" id="${ruleDomId(section)}" open>
       <summary>
