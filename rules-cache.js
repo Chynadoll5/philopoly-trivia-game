@@ -33,7 +33,6 @@ window.PHILOPOLY_RULE_BOOK = {
           "title": "Details",
           "items": [
             "Buying properties, railroads, and utilities.",
-            "Test",
             "Collecting rent from other players who land on your spaces.",
             "Completing full color groups and building Houses, then Mansions, then Hotels to raise the rent.",
             "Making smart trades, winning trivia, and grabbing the Finders Keepers stash."
@@ -513,7 +512,7 @@ window.PHILOPOLY_RULE_BOOK = {
           "title": "Trivia Mode (Trivia ON)",
           "body": [
             "In Trivia Mode, the digital trivia deck replaces the physical Chance cards. When you land on a Chance space:",
-            "The $50 stakes are the standard amounts. Your table may raise or lower them, but only through an official pre-game vote recorded under Section 21."
+            "The prize and any penalty are exactly what the trivia card shows. Do not substitute a fixed amount unless the card itself says so."
           ],
           "lists": [
             {
@@ -522,8 +521,8 @@ window.PHILOPOLY_RULE_BOOK = {
                 "Scan the Chance Trivia QR code with the device your table chose during setup.",
                 "The app deals you the next trivia question in the shuffled deck.",
                 "Answer using the answer mode your table chose during setup (Type-In or Host Mode, explained below).",
-                "Correct answer: collect $50 from the Bank.",
-                "Wrong answer (or time runs out): pay $50 into the Finders Keepers stash in the middle of the board. If you cannot pay, follow the debt rules in Section 18."
+                "Correct answer: collect the prize shown on the trivia card from the Bank.",
+                "Wrong answer (or time runs out): do not collect the prize. If the trivia card shows a penalty, follow it exactly. If you cannot pay, follow the debt rules in Section 18."
               ]
             }
           ],
@@ -596,7 +595,7 @@ window.PHILOPOLY_RULE_BOOK = {
           "items": [
             "Income Tax and Luxury Tax payments.",
             "Fines, fees, and penalty payments from Community Chest cards and trivia events.",
-            "Wrong-answer payments in Trivia Mode ($50 each).",
+            "Any penalty shown on a trivia card after a wrong answer.",
             "The $50 fee paid to get out of Jail."
           ]
         }
@@ -1447,7 +1446,7 @@ window.PHILOPOLY_RULE_BOOK = {
             ],
             [
               "Land on Chance",
-              "Trivia Mode: scan QR, answer — right +$50 from Bank, wrong −$50 to stash. Classic Mode: draw a Chance card"
+              "Trivia Mode: scan QR and answer — right: collect the prize shown on the card; wrong: follow any penalty shown on the card. Classic Mode: draw a Chance card"
             ],
             [
               "Land on Community Chest",
