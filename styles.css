@@ -713,6 +713,46 @@ p {
   line-height: 1.05;
 }
 
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-button {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.icon-button:hover,
+.icon-button:focus-visible {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.icon-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.icon-button.is-loading span {
+  display: inline-block;
+  animation: rules-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes rules-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
 .rules-panel {
   width: min(1560px, calc(100vw - 18px));
   height: min(940px, calc(100dvh - 18px));
@@ -831,7 +871,7 @@ p {
 
 .rules-toc {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
   min-height: 0;
   overflow: visible;
@@ -1100,6 +1140,46 @@ p {
   border-radius: 3px;
 }
 
+.preview-button.is-playing {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold);
+}
+
+.sound-picker {
+  display: grid;
+  gap: 6px;
+}
+
+.sound-picker select {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 38px 0 12px;
+  color: var(--cream);
+  background: var(--background-deep);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: inherit;
+}
+
+.sound-picker option {
+  color: var(--cream);
+  background: var(--background-deep);
+}
+
+.sound-option-description {
+  min-height: 19px;
+  margin: 0;
+  color: var(--lavender-dim);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.sound-option-description span {
+  color: var(--gold-dim);
+  white-space: nowrap;
+}
+
 .sound-options {
   display: flex;
   flex-wrap: wrap;
@@ -1183,7 +1263,19 @@ p {
   }
 
   .rules-toc {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+    padding: 6px;
+  }
+
+  .rules-toc-title {
+    padding: 8px;
+  }
+
+  .toc-button {
+    min-height: 25px;
+    padding: 2px 5px;
+    font-size: 0.7rem;
   }
 }
 
@@ -1202,7 +1294,7 @@ p {
   }
 
   .rules-toc {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1341,6 +1433,11 @@ p {
     display: grid;
   }
 
+  .rules-panel {
+    display: block;
+    overflow-y: auto;
+  }
+
   .rules-tools {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -1356,11 +1453,16 @@ p {
 
   .rules-book-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
   }
 
   .rules-toc {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rules-list {
+    overflow: visible;
+    padding-right: 0;
   }
 
   .rule-section summary {

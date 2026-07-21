@@ -10,11 +10,11 @@
     <link rel="preconnect" href="https://script.google.com">
     <link rel="preconnect" href="https://script.googleusercontent.com">
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20260721-3">
     <script defer src="config.js?v=20260721-2"></script>
     <script defer src="question-cache.js?v=20260721-2"></script>
     <script defer src="rules-cache.js?v=20260721-2"></script>
-    <script defer src="app.js?v=20260721-5"></script>
+    <script defer src="app.js?v=20260721-6"></script>
   </head>
   <body>
     <div class="app-shell">
@@ -130,7 +130,10 @@
             <p class="section-label">Rule book</p>
             <h2 id="rulesTitle">How to play Philopoly</h2>
           </div>
-          <button class="button button-outline" id="closeRulesButton" type="button">Close</button>
+          <div class="modal-header-actions">
+            <button class="icon-button" id="refreshRulesButton" type="button" aria-label="Refresh rules from Google Docs" title="Refresh rules from Google Docs"><span aria-hidden="true">&#8635;</span></button>
+            <button class="button button-outline" id="closeRulesButton" type="button">Close</button>
+          </div>
         </div>
         <div class="rules-tools">
           <label class="screen-reader" for="rulesSearchInput">Search the rule book</label>

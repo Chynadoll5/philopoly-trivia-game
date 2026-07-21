@@ -47,39 +47,67 @@ const FALLBACK_RULE_BOOK = window.PHILOPOLY_RULE_BOOK || {
 
 const SOUND_OPTIONS = {
   tick: {
-    title: "Timer tick",
-    defaultValue: "sharp",
+    title: "Last five seconds",
+    defaultValue: "countdown-mechanical-tick",
     options: [
-      { value: "sharp", label: "Sharp tick" },
-      { value: "double", label: "Double tick" },
-      { value: "off", label: "Off" }
+      { value: "countdown-mechanical-tick", label: "Mechanical tick", note: "One crisp clock tick for each remaining second.", duration: "1 second", file: "countdown-mechanical-tick.wav" },
+      { value: "countdown-fast-wall-clock", label: "Fast wall clock", note: "Rapid mechanical ticking with more urgency.", duration: "2 seconds", file: "countdown-fast-wall-clock.wav" },
+      { value: "countdown-ticking-counter", label: "Ticking counter", note: "A steady countdown with clear, even beats.", duration: "7 seconds", file: "countdown-ticking-counter.wav" },
+      { value: "countdown-race", label: "Race countdown", note: "A short sports-style countdown with a strong finish.", duration: "4 seconds", file: "countdown-race.wav" },
+      { value: "countdown-close-up", label: "Close-up tick-tock", note: "A close, realistic clock mechanism.", duration: "11 seconds", file: "countdown-close-up-tick-tock.wav" },
+      { value: "countdown-classic-timer", label: "Classic clock timer", note: "A familiar, steady tick-tock rhythm.", duration: "16 seconds", file: "countdown-classic-clock-timer.wav" },
+      { value: "countdown-ten-second", label: "Ten-second timer", note: "Clear ticking that builds pressure near zero.", duration: "10 seconds", file: "countdown-ten-second-timer.wav" },
+      { value: "countdown-percussion", label: "Percussion tick-tock", note: "A heavier rhythmic tick with more presence.", duration: "24 seconds", file: "countdown-percussion-tick-tock.wav" },
+      { value: "countdown-slow-race", label: "Slow race countdown", note: "A measured race-start countdown cue.", duration: "6 seconds", file: "countdown-slow-race.wav" },
+      { value: "countdown-wall-clock", label: "Wall clock tick-tock", note: "A natural room-clock sound with depth.", duration: "23 seconds", file: "countdown-wall-clock.wav" }
     ]
   },
   buzzer: {
-    title: "Buzzer",
-    defaultValue: "arena",
+    title: "Time is up",
+    defaultValue: "time-basketball-buzzer",
     options: [
-      { value: "arena", label: "Arena horn" },
-      { value: "siren", label: "Siren" },
-      { value: "blast", label: "Blast" }
+      { value: "time-basketball-buzzer", label: "Basketball buzzer", note: "A loud arena buzzer with a long finish.", duration: "4 seconds", file: "time-basketball-buzzer.wav" },
+      { value: "time-hockey-buzzer", label: "Hockey buzzer", note: "A deeper arena horn that cuts through a noisy room.", duration: "4 seconds", file: "time-hockey-buzzer.wav" },
+      { value: "time-digital-alarm", label: "Digital alarm", note: "A sustained alarm for maximum urgency.", duration: "8 seconds", file: "time-digital-alarm.wav" },
+      { value: "time-bell-buzzer", label: "Bell buzzer", note: "A short buzzer with a clear metal bell edge.", duration: "2 seconds", file: "time-bell-buzzer.wav" },
+      { value: "time-alarm-clock", label: "Alarm clock", note: "A strong bedside alarm that is hard to miss.", duration: "8 seconds", file: "time-alarm-clock.wav" },
+      { value: "time-clock-alarm", label: "Clock alarm", note: "A second alarm style with a sharper pulse.", duration: "8 seconds", file: "time-clock-alarm.wav" },
+      { value: "time-classic-gong", label: "Classic clock gong", note: "A resonant clock gong for a dramatic finish.", duration: "7 seconds", file: "time-classic-clock-gong.wav" },
+      { value: "time-clock-bells", label: "Clock bell signal", note: "Several clear bells marking the end of time.", duration: "6 seconds", file: "time-clock-bell-signal.wav" },
+      { value: "time-long-gong", label: "Long clock gong", note: "A deep, sustained gong with room-filling weight.", duration: "9 seconds", file: "time-long-clock-gong.wav" },
+      { value: "time-ding-dong", label: "Ding-dong alarm", note: "A familiar two-tone bell that stays clear at full volume.", duration: "4 seconds", file: "time-ding-dong.wav" }
     ]
   },
   correct: {
     title: "Correct answer",
-    defaultValue: "fanfare",
+    defaultValue: "correct-group-applause",
     options: [
-      { value: "fanfare", label: "Fanfare" },
-      { value: "jackpot", label: "Jackpot" },
-      { value: "bell", label: "Victory bell" }
+      { value: "correct-achievement-bell", label: "Achievement bell", note: "A bright bell that is quick and polished.", duration: "2 seconds", file: "correct-achievement-bell.wav" },
+      { value: "correct-prize-payout", label: "Prize payout", note: "A satisfying game-prize payout sound.", duration: "4 seconds", file: "correct-prize-payout.wav" },
+      { value: "correct-group-applause", label: "Group applause", note: "A real group clapping and celebrating.", duration: "4 seconds", file: "correct-group-applause.wav" },
+      { value: "correct-victory-crowd", label: "Victory crowd", note: "A big, loud crowd cheering a win.", duration: "10 seconds", file: "correct-victory-crowd.wav" },
+      { value: "correct-crowd-whistle", label: "Crowd and whistle", note: "Loud cheering with a celebratory whistle.", duration: "14 seconds", file: "correct-crowd-whistle.wav" },
+      { value: "correct-fanfare", label: "Victory fanfare", note: "A bold brass fanfare announcing a win.", duration: "8 seconds", file: "correct-victory-fanfare.wav" },
+      { value: "correct-auditorium", label: "Auditorium applause", note: "A larger audience applauding and cheering.", duration: "17 seconds", file: "correct-auditorium-applause.wav" },
+      { value: "correct-yes", label: "Victory yes", note: "A quick human yes for an immediate response.", duration: "1 second", file: "correct-victory-yes.wav" },
+      { value: "correct-slot-machine", label: "Slot machine win", note: "A bright casino-style winning alarm.", duration: "6 seconds", file: "correct-slot-machine-win.wav" },
+      { value: "correct-reward", label: "Correct answer reward", note: "A compact game-show reward cue.", duration: "2 seconds", file: "correct-answer-reward.wav" }
     ]
   },
   missed: {
-    title: "Missed answer",
-    defaultValue: "wrong",
+    title: "Wrong answer",
+    defaultValue: "wrong-bass-buzzer",
     options: [
-      { value: "wrong", label: "Wrong buzzer" },
-      { value: "drop", label: "Drop" },
-      { value: "alarm", label: "Alarm" }
+      { value: "wrong-bass-buzzer", label: "Bass buzzer", note: "A low, classic quiz-show wrong-answer buzzer.", duration: "3 seconds", file: "wrong-bass-buzzer.wav" },
+      { value: "wrong-game-show-buzz", label: "Game show buzz", note: "A quick, familiar wrong-answer buzz.", duration: "2 seconds", file: "wrong-game-show-buzz.wav" },
+      { value: "wrong-sad-trombone", label: "Sad trombone", note: "A real brass fail cue with a comic finish.", duration: "6 seconds", file: "wrong-sad-trombone.wav" },
+      { value: "wrong-dramatic-game-show", label: "Dramatic game show", note: "A longer wrong-answer cue with more impact.", duration: "4 seconds", file: "wrong-dramatic-game-show.wav" },
+      { value: "wrong-failure-piano", label: "Failure piano", note: "A short falling piano phrase for a miss.", duration: "2 seconds", file: "wrong-failure-piano.wav" },
+      { value: "wrong-losing-cue", label: "Losing cue", note: "A fuller game-loss sound with a clear ending.", duration: "3 seconds", file: "wrong-losing-cue.wav" },
+      { value: "wrong-long-buzzer", label: "Long buzzer", note: "A blunt, unmistakable wrong-answer buzzer.", duration: "1 second", file: "wrong-long-buzzer.wav" },
+      { value: "wrong-car-ignition", label: "Failed ignition", note: "A real car failing to start.", duration: "2 seconds", file: "wrong-failed-car-ignition.wav" },
+      { value: "wrong-drum-xylophone", label: "Drum and xylophone", note: "A playful percussion fail cue.", duration: "3 seconds", file: "wrong-drum-xylophone.wav" },
+      { value: "wrong-drum-bells", label: "Drum and bells", note: "A heavier musical fail cue with bells.", duration: "3 seconds", file: "wrong-drum-bells.wav" }
     ]
   }
 };
@@ -87,11 +115,11 @@ const SOUND_OPTIONS = {
 const DEFAULT_SOUND_SETTINGS = {
   volume: 1,
   muted: false,
-  soundProfileVersion: "loud-v3",
-  tick: "double",
-  buzzer: "blast",
-  correct: "jackpot",
-  missed: "alarm"
+  soundProfileVersion: "recorded-v1",
+  tick: "countdown-mechanical-tick",
+  buzzer: "time-basketball-buzzer",
+  correct: "correct-group-applause",
+  missed: "wrong-bass-buzzer"
 };
 
 const DEFAULT_CONFIG = {
@@ -136,7 +164,10 @@ const state = {
   rulesLoading: false,
   rulesLastLoadedAt: 0,
   ruleMatches: [],
-  activeRuleMatchIndex: -1
+  activeRuleMatchIndex: -1,
+  activeSoundPlayer: null,
+  activeSoundChannel: "",
+  activeSoundStopTimerId: null
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -168,6 +199,7 @@ function cacheElements() {
     "resetUsedButton",
     "rulesButton",
     "closeRulesButton",
+    "refreshRulesButton",
     "rulesOverlay",
     "rulesSearchInput",
     "rulesSearchCount",
@@ -228,6 +260,7 @@ function bindEvents() {
   document.addEventListener("keydown", handleKeyboard);
   els.rulesButton.addEventListener("click", openRulesOverlay);
   els.closeRulesButton.addEventListener("click", closeRulesOverlay);
+  els.refreshRulesButton.addEventListener("click", refreshRulesBook);
   els.rulesSearchInput.addEventListener("input", () => renderRules(els.rulesSearchInput.value));
   els.rulesToc.addEventListener("click", handleRulesTocClick);
   els.rulesPrevMatchButton.addEventListener("click", () => stepRuleMatch(-1));
@@ -622,6 +655,7 @@ function prepareQuestionStart() {
 function startQuestion() {
   if (!state.activeQuestion || state.questionStarted) return;
   unlockAudio();
+  stopRecordedSound();
   state.questionStarted = true;
   els.questionView.classList.remove("awaiting-start");
   els.startGate.classList.add("hidden");
@@ -673,7 +707,7 @@ function checkAnswer(event) {
   } else {
     els.feedback.textContent = "Try again or show the answer.";
     els.feedback.className = "feedback incorrect";
-    playTone("buzzer", "blast");
+    playTone("missed");
   }
 }
 
@@ -686,7 +720,7 @@ function markResult(isCorrect) {
   stopTimer();
   els.feedback.textContent = isCorrect ? "Correct" : "Missed";
   els.feedback.className = isCorrect ? "feedback correct" : "feedback incorrect";
-  playTone(isCorrect ? "correct" : "buzzer", isCorrect ? undefined : "blast");
+  playTone(isCorrect ? "correct" : "missed");
   flashVerdict(isCorrect);
   scheduleNextQuestion();
 }
@@ -734,7 +768,7 @@ function startTimer() {
   state.timerId = window.setInterval(() => {
     state.remaining -= 1;
     renderTimer();
-    if (state.remaining > 0 && state.remaining <= 5) {
+    if (state.remaining === 5) {
       playTone("tick");
     } else if (state.remaining <= 0) {
       stopTimer();
@@ -750,6 +784,7 @@ function stopTimer() {
     window.clearInterval(state.timerId);
     state.timerId = null;
   }
+  stopRecordedSound("tick");
 }
 
 function renderTimer() {
@@ -1021,7 +1056,7 @@ function renderRules(query = "") {
   if (!sections.length) {
     const emptyMessages = book.intro?.length
       ? book.intro
-      : ["Tap Rules again in a moment. If this keeps happening, the Apps Script needs access to the rule document."];
+      : ["No saved rule book is available yet. Use the refresh button above to load it from Google Docs."];
     els.rulesList.innerHTML = `
       <article class="rules-empty">
         <h3>${highlightText(book.title || "Rules unavailable", rawQuery)}</h3>
@@ -1153,7 +1188,7 @@ function showRulesLoading(message = "Loading latest rules from your Google docum
 }
 
 async function loadRulesBookFromBackend() {
-  if (state.rulesLoading) return;
+  if (state.rulesLoading) return false;
   if (!config.dataUrl) {
     state.ruleBook = normalizeRuleBook({
       title: "Rules unavailable",
@@ -1164,9 +1199,10 @@ async function loadRulesBookFromBackend() {
       sections: []
     });
     renderRules(els.rulesSearchInput.value);
-    return;
+    return false;
   }
   const hasVisibleRules = Boolean(state.ruleBook?.sections?.length);
+  let refreshed = false;
   state.rulesLoading = true;
   if (hasVisibleRules) {
     renderRules(els.rulesSearchInput.value);
@@ -1188,6 +1224,7 @@ async function loadRulesBookFromBackend() {
       state.rulesLoaded = true;
       state.rulesLastLoadedAt = Date.now();
       saveCachedRuleBook(state.ruleBook);
+      refreshed = Boolean(state.ruleBook.sections?.length);
     } else if (payload?.message && !hasVisibleRules) {
       state.ruleBook = normalizeRuleBook({
         title: "Rules unavailable",
@@ -1216,6 +1253,7 @@ async function loadRulesBookFromBackend() {
     state.rulesLoading = false;
     renderRules(els.rulesSearchInput.value);
   }
+  return refreshed;
 }
 
 function handleRulesTocClick(event) {
@@ -1333,8 +1371,23 @@ function escapeRegExp(value) {
 }
 
 function openRulesOverlay() {
+  els.rulesSearchInput.value = "";
+  renderRules("");
   els.rulesOverlay.classList.remove("hidden");
-  loadRulesBookFromBackend();
+}
+
+async function refreshRulesBook() {
+  if (state.rulesLoading) return;
+  els.refreshRulesButton.disabled = true;
+  els.refreshRulesButton.classList.add("is-loading");
+  els.refreshRulesButton.setAttribute("aria-label", "Refreshing rules from Google Docs");
+
+  const refreshed = await loadRulesBookFromBackend();
+
+  els.refreshRulesButton.disabled = false;
+  els.refreshRulesButton.classList.remove("is-loading");
+  els.refreshRulesButton.setAttribute("aria-label", "Refresh rules from Google Docs");
+  showToast(refreshed ? "Rules refreshed from Google Docs." : "Could not refresh. Showing the saved rules.");
 }
 
 function closeRulesOverlay() {
@@ -1348,6 +1401,7 @@ function openSoundOverlay() {
 }
 
 function closeSoundOverlay() {
+  stopRecordedSound();
   els.soundOverlay.classList.add("hidden");
 }
 
@@ -1358,41 +1412,60 @@ function renderSoundSettings() {
   els.soundChannels.innerHTML = Object.entries(SOUND_OPTIONS).map(([channel, definition]) => `
     <section class="sound-channel" data-channel="${channel}">
       <div class="sound-channel-head">
-        <span class="sound-channel-title">${escapeHtml(definition.title)}</span>
-        <button class="preview-button" type="button" data-preview="${channel}" aria-label="Preview ${escapeHtml(definition.title)}">▶</button>
+        <label class="sound-channel-title" for="soundSelect-${channel}">${escapeHtml(definition.title)}</label>
+        <button class="preview-button" type="button" data-preview="${channel}" aria-label="Preview ${escapeHtml(definition.title)}" title="Preview ${escapeHtml(definition.title)}" aria-pressed="false"><span aria-hidden="true">&#9654;</span></button>
       </div>
-      <div class="sound-options">
-        ${definition.options.map((option) => `
-          <button class="sound-chip${state.soundSettings[channel] === option.value ? " active" : ""}" type="button" data-channel="${channel}" data-sound="${option.value}">
-            ${escapeHtml(option.label)}
-          </button>
-        `).join("")}
+      <div class="sound-picker">
+        <select id="soundSelect-${channel}" data-sound-select="${channel}">
+          ${definition.options.map((option) => `
+            <option value="${option.value}"${state.soundSettings[channel] === option.value ? " selected" : ""}>${escapeHtml(option.label)}</option>
+          `).join("")}
+        </select>
+        <p class="sound-option-description" data-sound-description="${channel}">${soundOptionDescription(channel)}</p>
       </div>
     </section>
   `).join("");
 
-  els.soundChannels.querySelectorAll(".sound-chip").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.soundSettings[button.dataset.channel] = button.dataset.sound;
+  els.soundChannels.querySelectorAll("[data-sound-select]").forEach((select) => {
+    select.addEventListener("change", () => {
+      const channel = select.dataset.soundSelect;
+      state.soundSettings[channel] = select.value;
       saveSoundSettings();
-      renderSoundSettings();
-      playTone(button.dataset.channel);
+      const description = els.soundChannels.querySelector(`[data-sound-description="${channel}"]`);
+      if (description) description.innerHTML = soundOptionDescription(channel);
+      playTone(channel);
     });
   });
 
   els.soundChannels.querySelectorAll(".preview-button").forEach((button) => {
-    button.addEventListener("click", () => playTone(button.dataset.preview));
+    button.addEventListener("click", () => {
+      const channel = button.dataset.preview;
+      if (state.activeSoundPlayer && state.activeSoundChannel === channel && !state.activeSoundPlayer.paused) {
+        stopRecordedSound();
+        return;
+      }
+      playTone(channel);
+    });
   });
+}
+
+function soundOptionDescription(channel) {
+  const definition = SOUND_OPTIONS[channel];
+  const option = definition?.options.find((candidate) => candidate.value === state.soundSettings[channel]);
+  if (!option) return "";
+  return `${escapeHtml(option.note)} <span>${escapeHtml(option.duration)}</span>`;
 }
 
 function handleVolumeInput() {
   state.soundSettings.volume = Number(els.masterVolumeInput.value) / 100;
   els.volumeReadout.textContent = `${els.masterVolumeInput.value}%`;
+  if (state.activeSoundPlayer) state.activeSoundPlayer.volume = state.soundSettings.volume;
   saveSoundSettings();
 }
 
 function handleMuteToggle() {
   state.soundSettings.muted = els.muteToggle.checked;
+  if (state.soundSettings.muted) stopRecordedSound();
   saveSoundSettings();
 }
 
@@ -1437,17 +1510,97 @@ function playTone(channel, overrideValue) {
   unlockAudio();
   const value = overrideValue || state.soundSettings[channel];
   if (!value || value === "off" || value === "silent" || state.soundSettings.muted || state.soundSettings.volume <= 0) return;
-  const context = getAudioContext();
-  if (!context) return;
 
   if ((channel === "buzzer" || channel === "missed") && "vibrate" in navigator) {
     navigator.vibrate(channel === "buzzer" ? [280, 80, 280, 80, 420] : [220, 70, 220]);
   }
 
+  const recordedOption = SOUND_OPTIONS[channel]?.options.find((option) => option.value === value);
+  if (recordedOption?.file) {
+    playRecordedSound(channel, recordedOption.file);
+    return;
+  }
+
+  const context = getAudioContext();
+  if (!context) return;
+
   if (channel === "tick") playTick(value, context);
   if (channel === "buzzer") playBuzzer(value, context);
   if (channel === "correct") playCorrect(value, context);
   if (channel === "missed") playMissed(value, context);
+}
+
+function playRecordedSound(channel, file) {
+  stopRecordedSound();
+  const player = new Audio(`assets/sound-previews/${file}`);
+  player.preload = "auto";
+  player.volume = state.soundSettings.volume;
+  state.activeSoundPlayer = player;
+  state.activeSoundChannel = channel;
+
+  const configureCountdown = () => {
+    if (state.activeSoundPlayer !== player) return;
+    if (channel === "tick") {
+      const duration = Number(player.duration);
+      if (Number.isFinite(duration) && duration > 5.25) {
+        player.currentTime = Math.max(0, duration - 5);
+      } else if (Number.isFinite(duration) && duration < 4.75) {
+        player.loop = true;
+      }
+      state.activeSoundStopTimerId = window.setTimeout(() => stopRecordedSound("tick"), 5100);
+    }
+  };
+
+  player.addEventListener("loadedmetadata", configureCountdown, { once: true });
+  player.addEventListener("ended", () => {
+    if (state.activeSoundPlayer === player) stopRecordedSound(channel);
+  });
+  if (player.readyState >= 1) configureCountdown();
+  player.play()
+    .then(updateSoundPreviewButtons)
+    .catch(() => {
+      stopRecordedSound(channel);
+      playRecordedFallback(channel);
+    });
+  updateSoundPreviewButtons();
+}
+
+function stopRecordedSound(channel = "") {
+  if (channel && state.activeSoundChannel !== channel) return;
+  if (state.activeSoundStopTimerId) {
+    window.clearTimeout(state.activeSoundStopTimerId);
+    state.activeSoundStopTimerId = null;
+  }
+  const player = state.activeSoundPlayer;
+  state.activeSoundPlayer = null;
+  state.activeSoundChannel = "";
+  if (player) {
+    player.pause();
+    try {
+      player.currentTime = 0;
+    } catch {
+      // The file had not loaded enough to seek yet.
+    }
+  }
+  updateSoundPreviewButtons();
+}
+
+function updateSoundPreviewButtons() {
+  if (!els.soundChannels) return;
+  els.soundChannels.querySelectorAll("[data-preview]").forEach((button) => {
+    const isPlaying = Boolean(state.activeSoundPlayer && state.activeSoundChannel === button.dataset.preview && !state.activeSoundPlayer.paused);
+    button.classList.toggle("is-playing", isPlaying);
+    button.setAttribute("aria-pressed", String(isPlaying));
+  });
+}
+
+function playRecordedFallback(channel) {
+  const context = getAudioContext();
+  if (!context) return;
+  if (channel === "tick") playTick("sharp", context);
+  if (channel === "buzzer") playBuzzer("blast", context);
+  if (channel === "correct") playCorrect("jackpot", context);
+  if (channel === "missed") playMissed("wrong", context);
 }
 
 function getAudioContext() {
