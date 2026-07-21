@@ -961,7 +961,7 @@ function soundKey() {
 }
 
 function ruleBookCacheKey() {
-  return `${config.storageKey || "philopoly-trivia"}:rule-book:${config.rulesDocumentUrl || "default"}`;
+  return `${config.storageKey || "philopoly-trivia"}:rule-book:v2:${config.rulesDocumentUrl || "default"}`;
 }
 
 function loadCachedRuleBook() {
