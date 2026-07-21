@@ -132,7 +132,7 @@ const state = {
   audioContext: null,
   soundSettings: { ...DEFAULT_SOUND_SETTINGS },
   ruleBook: normalizeRuleBook(FALLBACK_RULE_BOOK),
-  rulesLoaded: false,
+  rulesLoaded: Boolean(FALLBACK_RULE_BOOK?.sections?.length),
   rulesLoading: false,
   rulesLastLoadedAt: 0,
   ruleMatches: [],
@@ -145,11 +145,16 @@ document.addEventListener("DOMContentLoaded", () => {
   bindEvents();
   loadUsedQuestions();
   loadGameCode();
+  loadCachedRuleBook();
   const hasFastData = loadCachedGameData() || loadBundledGameData();
   if (hasFastData) {
     scheduleGameDataRefresh(2500);
   } else {
     loadGameData();
+  }
+  const openTarget = new URLSearchParams(window.location.search).get("open");
+  if (openTarget === "rules" || window.location.hash === "#rules") {
+    window.setTimeout(openRulesOverlay, 0);
   }
 });
 
@@ -952,6 +957,30 @@ function soundKey() {
   return `${config.storageKey || "philopoly-trivia"}:sound-settings`;
 }
 
+function ruleBookCacheKey() {
+  return `${config.storageKey || "philopoly-trivia"}:rule-book:${config.rulesDocumentUrl || "default"}`;
+}
+
+function loadCachedRuleBook() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(ruleBookCacheKey()) || "null");
+    if (!cached?.sections?.length) return false;
+    state.ruleBook = normalizeRuleBook(cached);
+    state.rulesLoaded = true;
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function saveCachedRuleBook(book) {
+  try {
+    localStorage.setItem(ruleBookCacheKey(), JSON.stringify(book));
+  } catch (error) {
+    console.warn("Could not save the rule book for faster loading", error);
+  }
+}
+
 function renderRules(query = "") {
   const book = state.ruleBook || normalizeRuleBook(FALLBACK_RULE_BOOK);
   const sections = book.sections || [];
@@ -1134,8 +1163,13 @@ async function loadRulesBookFromBackend() {
     renderRules(els.rulesSearchInput.value);
     return;
   }
+  const hasVisibleRules = Boolean(state.ruleBook?.sections?.length);
   state.rulesLoading = true;
-  showRulesLoading(state.rulesLoaded ? "Refreshing rules from your Google document..." : "Loading latest rules from your Google document...");
+  if (hasVisibleRules) {
+    renderRules(els.rulesSearchInput.value);
+  } else {
+    showRulesLoading("Loading latest rules from your Google document...");
+  }
   try {
     const params = {
       action: "rules",
@@ -1150,7 +1184,8 @@ async function loadRulesBookFromBackend() {
       state.ruleBook = normalizeRuleBook(payload.rules);
       state.rulesLoaded = true;
       state.rulesLastLoadedAt = Date.now();
-    } else if (payload?.message) {
+      saveCachedRuleBook(state.ruleBook);
+    } else if (payload?.message && !hasVisibleRules) {
       state.ruleBook = normalizeRuleBook({
         title: "Rules unavailable",
         sourceName: "",
@@ -1164,14 +1199,16 @@ async function loadRulesBookFromBackend() {
     }
   } catch (error) {
     console.warn("Rules source unavailable", error);
-    state.ruleBook = normalizeRuleBook({
-      title: "Rules unavailable",
-      intro: [
-        "The game could not reach the live rule document.",
-        "Close Rules and open it again. If this keeps happening, check the Apps Script deployment."
-      ],
-      sections: []
-    });
+    if (!hasVisibleRules) {
+      state.ruleBook = normalizeRuleBook({
+        title: "Rules unavailable",
+        intro: [
+          "The game could not reach the live rule document.",
+          "Close Rules and open it again. If this keeps happening, check the Apps Script deployment."
+        ],
+        sections: []
+      });
+    }
   } finally {
     state.rulesLoading = false;
     renderRules(els.rulesSearchInput.value);

@@ -106,6 +106,12 @@ h1 {
   font-size: 1rem;
 }
 
+.header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .game-link,
 .primary-button,
 .secondary-button,
@@ -423,6 +429,11 @@ h1 {
   .game-link,
   .secondary-button {
     width: 100%;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
   }
 
   .notice-inner {
