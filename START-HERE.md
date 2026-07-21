@@ -44,3 +44,10 @@ GitHub will give you a website link. That link is what your QR code should open.
 Create a QR code from the GitHub Pages website link.
 
 You can keep the same QR code later. When you change questions in the Google Sheet, the game updates from the Sheet.
+
+## Rules
+
+Edit the rule book here:
+https://docs.google.com/document/d/1Mz6LMi-AY4o8MmGC6tFIRQpljWRb5ZLC/edit
+
+The game reads that document when someone taps `Rules`.

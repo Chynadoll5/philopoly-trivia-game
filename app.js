@@ -87,11 +87,11 @@ const SOUND_OPTIONS = {
 const DEFAULT_SOUND_SETTINGS = {
   volume: 1,
   muted: false,
-  soundProfileVersion: "loud-v2",
-  tick: SOUND_OPTIONS.tick.defaultValue,
-  buzzer: SOUND_OPTIONS.buzzer.defaultValue,
-  correct: SOUND_OPTIONS.correct.defaultValue,
-  missed: SOUND_OPTIONS.missed.defaultValue
+  soundProfileVersion: "loud-v3",
+  tick: "double",
+  buzzer: "blast",
+  correct: "jackpot",
+  missed: "alarm"
 };
 
 const config = window.TRIVIA_CONFIG || {};
@@ -129,14 +129,12 @@ const state = {
 document.addEventListener("DOMContentLoaded", () => {
   cacheElements();
   loadSoundSettings();
-  renderRules();
-  renderSoundSettings();
   bindEvents();
   loadUsedQuestions();
   loadGameCode();
   const hasFastData = loadCachedGameData() || loadBundledGameData();
   if (hasFastData) {
-    scheduleGameDataRefresh(600);
+    scheduleGameDataRefresh(2500);
   } else {
     loadGameData();
   }
@@ -297,7 +295,12 @@ function scheduleGameDataRefresh(delay = 0) {
   if (!config.dataUrl) return;
   window.clearTimeout(state.dataRefreshTimerId);
   state.dataRefreshTimerId = window.setTimeout(() => {
-    loadGameData({ background: true });
+    const refresh = () => loadGameData({ background: true });
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(refresh, { timeout: 2500 });
+    } else {
+      refresh();
+    }
   }, delay);
 }
 
@@ -587,7 +590,7 @@ function prepareQuestionStart() {
   renderTimer();
   els.questionView.classList.add("awaiting-start");
   els.startGate.classList.remove("hidden");
-  els.questionHeading.textContent = "Question ready.";
+  els.questionHeading.textContent = "Question loaded.";
   els.feedback.textContent = "";
   els.answerForm.classList.add("hidden");
   els.hostControls.classList.add("hidden");
@@ -650,7 +653,7 @@ function checkAnswer(event) {
   } else {
     els.feedback.textContent = "Try again or show the answer.";
     els.feedback.className = "feedback incorrect";
-    playTone("missed");
+    playTone("buzzer", "blast");
   }
 }
 
@@ -663,7 +666,7 @@ function markResult(isCorrect) {
   stopTimer();
   els.feedback.textContent = isCorrect ? "Correct" : "Missed";
   els.feedback.className = isCorrect ? "feedback correct" : "feedback incorrect";
-  playTone(isCorrect ? "correct" : "missed");
+  playTone(isCorrect ? "correct" : "buzzer", isCorrect ? undefined : "blast");
   flashVerdict(isCorrect);
   scheduleNextQuestion();
 }
@@ -778,7 +781,7 @@ function saveGameCode() {
   const hasFastData = loadCachedGameData() || loadBundledGameData();
   updateGameCodeNote();
   if (hasFastData) {
-    scheduleGameDataRefresh(250);
+    scheduleGameDataRefresh(1200);
   } else {
     loadGameData();
   }
@@ -937,46 +940,88 @@ function soundKey() {
 function renderRules(query = "") {
   const book = state.ruleBook || normalizeRuleBook(FALLBACK_RULE_BOOK);
   const sections = book.sections || [];
-  const normalizedQuery = normalizeRuleQuery(query);
   const rawQuery = String(query || "").trim();
-  const matches = sections.filter((section) => !normalizedQuery || ruleSearchText(section).includes(normalizedQuery));
-  const sectionWord = matches.length === 1 ? "section" : "sections";
+  const searchTerms = getRuleSearchTerms(rawQuery);
+  const sectionMatchCounts = new Map(sections.map((section) => [ruleDomId(section), countRuleMatches(section, searchTerms)]));
+  const matchedSections = sections.filter((section) => !searchTerms.length || sectionMatchCounts.get(ruleDomId(section)) > 0);
+  const totalMatches = sections.reduce((total, section) => total + sectionMatchCounts.get(ruleDomId(section)), countRuleMatches({ body: book.intro || [] }, searchTerms));
+  const sectionWord = matchedSections.length === 1 ? "section" : "sections";
   state.ruleMatches = [];
   state.activeRuleMatchIndex = -1;
-  els.rulesSearchCount.textContent = normalizedQuery
-    ? `${matches.length} of ${sections.length} ${sectionWord}`
+  els.rulesSearchCount.textContent = searchTerms.length
+    ? `${totalMatches} matches in ${matchedSections.length} of ${sections.length} ${sectionWord}`
     : `${sections.length} sections`;
 
-  els.rulesToc.innerHTML = matches.map((section) => `
-    <button class="toc-button" type="button" data-rule-id="${ruleDomId(section)}">
+  els.rulesToc.innerHTML = sections.map((section) => {
+    const sectionId = ruleDomId(section);
+    const matchCount = sectionMatchCounts.get(sectionId) || 0;
+    const isMatch = !searchTerms.length || matchCount > 0;
+    const searchClass = searchTerms.length ? (isMatch ? " is-match" : " is-muted") : "";
+    return `
+    <button class="toc-button${searchClass}" type="button" data-rule-id="${sectionId}">
       <span class="toc-number">${escapeHtml(section.number)}</span>
       <span>${escapeHtml(section.title)}</span>
+      ${searchTerms.length && matchCount ? `<span class="toc-match-count">${matchCount}</span>` : ""}
     </button>
-  `).join("");
-
-  if (!matches.length) {
-    els.rulesList.innerHTML = `
-      <article class="rules-empty">
-        <h3>No matching rules</h3>
-        <p>Try searching for rent, jail, trivia, mortgage, building, or a property name.</p>
-      </article>
-    `;
-    updateRuleMatchNav();
-    return;
-  }
+  `;
+  }).join("");
 
   els.rulesList.innerHTML = [
-    renderRuleIntro(normalizedQuery, rawQuery, book),
-    ...matches.map((section) => renderRuleSection(section, rawQuery))
+    renderRuleIntro(rawQuery, book),
+    ...sections.map((section) => renderRuleSection(section, rawQuery))
   ].join("");
+
+  if (!sections.length) {
+    els.rulesList.innerHTML = `
+      <article class="rules-empty">
+        <h3>Rules unavailable</h3>
+        <p>Tap Rules again in a moment. If this keeps happening, the Apps Script needs access to the rule document.</p>
+      </article>
+    `;
+  }
+
   updateRuleMatchNav();
   if (state.ruleMatches.length) {
     window.setTimeout(() => focusRuleMatch(0, false), 0);
   }
 }
 
-function renderRuleIntro(hasSearch, query, book) {
-  if (hasSearch || !book.intro?.length) return "";
+function getRuleSearchTerms(query) {
+  const normalized = normalizeRuleQuery(query);
+  if (!normalized) return [];
+  const terms = normalized.split(" ").filter(Boolean);
+  const usefulTerms = terms.length > 1 ? terms.filter((term) => term.length > 1) : terms;
+  return [...new Set(usefulTerms)];
+}
+
+function countRuleMatches(block, searchTerms) {
+  if (!searchTerms.length) return 0;
+  return collectRuleTextValues(block).reduce((total, value) => total + countTextMatches(value, searchTerms), 0);
+}
+
+function collectRuleTextValues(block) {
+  if (!block) return [];
+  return [
+    block.number,
+    block.title,
+    ...(block.body || []),
+    ...(block.lists || []).flatMap((list) => [list.title, ...(list.items || [])]),
+    ...(block.tables || []).flatMap((table) => [table.title, ...(table.headers || []), ...(table.rows || []).flat()]),
+    ...(block.subsections || []).flatMap(collectRuleTextValues)
+  ].filter(Boolean).map(String);
+}
+
+function countTextMatches(value, searchTerms) {
+  const text = normalizeRuleQuery(value);
+  return searchTerms.reduce((total, term) => {
+    const regex = new RegExp(escapeRegExp(term), "g");
+    const matches = text.match(regex);
+    return total + (matches ? matches.length : 0);
+  }, 0);
+}
+
+function renderRuleIntro(query, book) {
+  if (!book.intro?.length) return "";
   return `
     <article class="rule-book-intro">
       ${book.intro.map((paragraph) => `<p>${highlightText(paragraph, query)}</p>`).join("")}
@@ -1043,30 +1088,57 @@ function renderRuleTable(table, query) {
   `;
 }
 
+function showRulesLoading(message = "Loading latest rules from your Google document...") {
+  state.ruleMatches = [];
+  state.activeRuleMatchIndex = -1;
+  els.rulesSearchCount.textContent = message;
+  els.rulesToc.innerHTML = "";
+  els.rulesList.innerHTML = `
+    <article class="rules-empty">
+      <h3>Loading rules</h3>
+      <p>${escapeHtml(message)}</p>
+    </article>
+  `;
+  updateRuleMatchNav();
+}
+
 async function loadRulesBookFromBackend() {
   if (!config.dataUrl || state.rulesLoading) return;
   state.rulesLoading = true;
-  els.rulesSearchCount.textContent = state.rulesLoaded ? "Refreshing rules" : "Loading rules";
+  showRulesLoading(state.rulesLoaded ? "Refreshing rules from your Google document..." : "Loading latest rules from your Google document...");
   try {
-    const payload = await loadJsonp(config.dataUrl, {
+    const params = {
       action: "rules",
       gameCode: state.gameCode
-    });
+    };
+    if (config.rulesDocumentUrl) params.rulesDocumentUrl = config.rulesDocumentUrl;
+    const payload = await loadJsonp(config.dataUrl, params);
     if (payload?.ok && payload.rules) {
       state.ruleBook = normalizeRuleBook(payload.rules);
       state.rulesLoaded = true;
       state.rulesLastLoadedAt = Date.now();
     } else if (payload?.message) {
       state.ruleBook = normalizeRuleBook({
-        ...FALLBACK_RULE_BOOK,
+        title: "Rules unavailable",
+        sourceName: "",
+        sourceUrl: "",
         intro: [
           payload.message,
-          "The game is showing the built-in fallback rules until the live Apps Script points to a native Google Doc."
-        ]
+          "The game could not read the live rule document yet. The Apps Script may need to be updated or granted Drive access."
+        ],
+        sections: []
       });
     }
   } catch (error) {
     console.warn("Rules source unavailable", error);
+    state.ruleBook = normalizeRuleBook({
+      title: "Rules unavailable",
+      intro: [
+        "The game could not reach the live rule document.",
+        "Close Rules and open it again. If this keeps happening, check the Apps Script deployment."
+      ],
+      sections: []
+    });
   } finally {
     state.rulesLoading = false;
     renderRules(els.rulesSearchInput.value);
@@ -1163,9 +1235,9 @@ function normalizeRuleQuery(value) {
 
 function highlightText(value, query) {
   const text = String(value ?? "");
-  const needle = String(query || "").trim();
-  if (!needle) return escapeHtml(text);
-  const regex = new RegExp(escapeRegExp(needle), "gi");
+  const terms = getRuleSearchTerms(query);
+  if (!terms.length) return escapeHtml(text);
+  const regex = new RegExp(`(${terms.map(escapeRegExp).sort((a, b) => b.length - a.length).join("|")})`, "gi");
   let result = "";
   let lastIndex = 0;
   let match;
@@ -1188,7 +1260,6 @@ function escapeRegExp(value) {
 }
 
 function openRulesOverlay() {
-  renderRules(els.rulesSearchInput.value);
   els.rulesOverlay.classList.remove("hidden");
   loadRulesBookFromBackend();
 }
