@@ -1,4 +1,5 @@
 name: Store Philopoly sound previews
+# Re-run this workflow after rule-book edits to refresh the instant website copy.
 
 on:
   push:
