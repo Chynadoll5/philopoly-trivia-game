@@ -56,3 +56,40 @@ renderRuleSection = function renderRuleSectionOpen(section, queryOrIndex, forceO
     </details>
   `;
 };
+
+renderRules = function renderRulesWithFullToc(query = "") {
+  const book = state.ruleBook || normalizeRuleBook(FALLBACK_RULE_BOOK);
+  const sections = book.sections || [];
+  const normalizedQuery = normalizeRuleQuery(query);
+  const rawQuery = String(query || "").trim();
+  const matches = sections.filter((section) => !normalizedQuery || ruleSearchText(section).includes(normalizedQuery));
+  const matchedSectionIds = new Set(matches.map((section) => ruleDomId(section)));
+  const sectionWord = matches.length === 1 ? "section" : "sections";
+
+  state.ruleMatches = [];
+  state.activeRuleMatchIndex = -1;
+  els.rulesSearchCount.textContent = normalizedQuery
+    ? `${matches.length} of ${sections.length} ${sectionWord}`
+    : `${sections.length} sections`;
+
+  els.rulesToc.innerHTML = sections.map((section) => {
+    const isMatch = !normalizedQuery || matchedSectionIds.has(ruleDomId(section));
+    const searchClass = normalizedQuery ? (isMatch ? " is-match" : " is-muted") : "";
+    return `
+    <button class="toc-button${searchClass}" type="button" data-rule-id="${ruleDomId(section)}">
+      <span class="toc-number">${escapeHtml(section.number)}</span>
+      <span>${escapeHtml(section.title)}</span>
+    </button>
+  `;
+  }).join("");
+
+  els.rulesList.innerHTML = [
+    renderRuleIntro(normalizedQuery, rawQuery, book),
+    ...sections.map((section) => renderRuleSection(section, rawQuery))
+  ].join("");
+
+  updateRuleMatchNav();
+  if (state.ruleMatches.length) {
+    window.setTimeout(() => focusRuleMatch(0, false), 0);
+  }
+};
