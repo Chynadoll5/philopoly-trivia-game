@@ -48,6 +48,6 @@ You can keep the same QR code later. When you change questions in the Google She
 ## Rules
 
 Edit the rule book here:
-https://docs.google.com/document/d/1Mz6LMi-AY4o8MmGC6tFIRQpljWRb5ZLC/edit
+https://docs.google.com/document/d/1ecrP2-qq8RypjtBzQ6IYhIBPz0GqdowY2UD33SwY0vY/edit
 
 The game reads that document when someone taps `Rules`.
