@@ -30,31 +30,75 @@ jobs:
           download "https://assets.mixkit.co/active_storage/sfx/1063/1063.wav" "countdown-fast-wall-clock.wav"
           download "https://assets.mixkit.co/active_storage/sfx/1053/1053.wav" "countdown-ticking-counter.wav"
           download "https://assets.mixkit.co/active_storage/sfx/1051/1051.wav" "countdown-race.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1059/1059.wav" "countdown-close-up-tick-tock.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1045/1045.wav" "countdown-classic-clock-timer.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1056/1056.wav" "countdown-ten-second-timer.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1047/1047.wav" "countdown-percussion-tick-tock.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1055/1055.wav" "countdown-slow-race.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1060/1060.wav" "countdown-wall-clock.wav"
 
           download "https://assets.mixkit.co/active_storage/sfx/1647/1647.wav" "time-basketball-buzzer.wav"
           download "https://assets.mixkit.co/active_storage/sfx/941/941.wav" "time-hockey-buzzer.wav"
           download "https://assets.mixkit.co/active_storage/sfx/992/992.wav" "time-digital-alarm.wav"
           download "https://assets.mixkit.co/active_storage/sfx/2962/2962.wav" "time-bell-buzzer.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/988/988.wav" "time-alarm-clock.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1081/1081.wav" "time-clock-alarm.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1066/1066.wav" "time-classic-clock-gong.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1069/1069.wav" "time-clock-bell-signal.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1067/1067.wav" "time-long-clock-gong.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/109/109.wav" "time-ding-dong.wav"
 
           download "https://assets.mixkit.co/active_storage/sfx/600/600.wav" "correct-achievement-bell.wav"
           download "https://assets.mixkit.co/active_storage/sfx/1934/1934.wav" "correct-prize-payout.wav"
           download "https://assets.mixkit.co/active_storage/sfx/523/523.wav" "correct-group-applause.wav"
           download "https://assets.mixkit.co/active_storage/sfx/462/462.wav" "correct-victory-crowd.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/610/610.wav" "correct-crowd-whistle.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/226/226.wav" "correct-victory-fanfare.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/502/502.wav" "correct-auditorium-applause.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/2012/2012.wav" "correct-victory-yes.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1995/1995.wav" "correct-slot-machine-win.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/952/952.wav" "correct-answer-reward.wav"
 
           download "https://assets.mixkit.co/active_storage/sfx/948/948.wav" "wrong-bass-buzzer.wav"
           download "https://assets.mixkit.co/active_storage/sfx/950/950.wav" "wrong-game-show-buzz.wav"
           download "https://assets.mixkit.co/active_storage/sfx/472/472.wav" "wrong-sad-trombone.wav"
           download "https://assets.mixkit.co/active_storage/sfx/3219/3219.wav" "wrong-dramatic-game-show.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/473/473.wav" "wrong-failure-piano.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/2042/2042.wav" "wrong-losing-cue.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/954/954.wav" "wrong-long-buzzer.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/1540/1540.wav" "wrong-failed-car-ignition.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/568/568.wav" "wrong-drum-xylophone.wav"
+          download "https://assets.mixkit.co/active_storage/sfx/571/571.wav" "wrong-drum-bells.wav"
+
+      - name: Build the instant rule book copy
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --retry 3 --get \
+            --data-urlencode "action=rules" \
+            --data-urlencode "rulesDocumentUrl=https://docs.google.com/document/d/1ecrP2-qq8RypjtBzQ6IYhIBPz0GqdowY2UD33SwY0vY/edit" \
+            "https://script.google.com/macros/s/AKfycbwavxh7EUvWiAUBbu356EUn3LwH0EENq1tWGfTH1d_S7MBZKgPjGbihCRaWEodl8oBn/exec" \
+            --output /tmp/philopoly-rules.json
+
+          node <<'NODE'
+          const fs = require("fs");
+          const payload = JSON.parse(fs.readFileSync("/tmp/philopoly-rules.json", "utf8"));
+          if (!payload.ok || !payload.rules || !payload.rules.sections?.length) {
+            throw new Error(payload.message || "The live rule book was empty.");
+          }
+          const json = JSON.stringify(payload.rules, null, 2).replace(/<\/script/gi, "<\\/script");
+          fs.writeFileSync("rules-cache.js", `window.PHILOPOLY_RULE_BOOK = ${json};\n`);
+          NODE
 
       - name: Commit the permanent copies
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add assets/sound-previews/*.wav
+          git add assets/sound-previews/*.wav rules-cache.js
           if git diff --cached --quiet; then
-            echo "Sound files are already stored."
+            echo "Sound files and rules are already stored."
             exit 0
           fi
-          git commit -m "Store permanent sound audition files"
+          git commit -m "Store 40 sound choices and current rules"
           git push
