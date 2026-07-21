@@ -106,6 +106,8 @@ const config = {
   ...DEFAULT_CONFIG,
   ...(window.TRIVIA_CONFIG || {})
 };
+const JSONP_TIMEOUT_MS = 15000;
+const RULES_JSONP_TIMEOUT_MS = 60000;
 const els = {};
 const state = {
   data: null,
@@ -315,10 +317,12 @@ function scheduleGameDataRefresh(delay = 0) {
   }, delay);
 }
 
-function loadJsonp(url, params = {}) {
+function loadJsonp(url, params = {}, options = {}) {
   return new Promise((resolve, reject) => {
     const callbackName = `trivia_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
+    const timeoutMs = Number(options.timeoutMs) || JSONP_TIMEOUT_MS;
+    const timeoutMessage = options.timeoutMessage || "The question database did not respond.";
     const search = new URLSearchParams({
       ...params,
       callback: callbackName,
@@ -327,8 +331,8 @@ function loadJsonp(url, params = {}) {
     const joiner = url.includes("?") ? "&" : "?";
     const timeout = window.setTimeout(() => {
       cleanup();
-      reject(new Error("The question database did not respond."));
-    }, 15000);
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
 
     window[callbackName] = (payload) => {
       cleanup();
@@ -1138,7 +1142,10 @@ async function loadRulesBookFromBackend() {
       gameCode: state.gameCode
     };
     if (config.rulesDocumentUrl) params.rulesDocumentUrl = config.rulesDocumentUrl;
-    const payload = await loadJsonp(config.dataUrl, params);
+    const payload = await loadJsonp(config.dataUrl, params, {
+      timeoutMs: RULES_JSONP_TIMEOUT_MS,
+      timeoutMessage: "The rule book did not respond yet."
+    });
     if (payload?.ok && payload.rules) {
       state.ruleBook = normalizeRuleBook(payload.rules);
       state.rulesLoaded = true;
