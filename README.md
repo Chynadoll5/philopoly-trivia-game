@@ -11,7 +11,7 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 
 ## Google Sheet Rules
 
-- `Command Center` controls timer, colors, button behavior, and title text.
+- `Command Center` controls timer, button behavior, title text, and the default answer mode.
 - `Command Center` also controls the default answer mode, the on-screen mode switch, and the End Game button.
 - `Topic Controls` turns category tabs on and off.
 - Every other playable tab is a category.
@@ -20,20 +20,20 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 - Separate accepted variations with `|`, like `Michael Jackson|MJ|Mike Jackson`.
 - Set a category to `FALSE` on `Topic Controls` to hide that whole category.
 - Set a question row's `Blocked` value to `TRUE` to keep that specific question out of the game.
-- The `Surprise Me` button pulls from all levels in the selected category.
+- The `Random` cell pulls from all levels in the selected category.
 
 ## Phone Play Modes
 
-- Every phone should use the same `Game Code`, such as `game-1`, when playing the same shared game.
-- In live mode, the Apps Script reserves each drawn question for that game code so multiple phones share the same used-question history.
-- `Type Answer` mode lets players type an answer and tap `Check`.
-- `Host Mode` hides the typing box and gives the host `Correct`, `Missed`, `Show Answer`, `Shuffle Again`, and `Select Again` controls.
-- `Shuffle Again` pulls another question from the same category and level.
-- `Select Again` goes back to the category screen for the next turn.
-- `End Game` stops the timer and lets you resume, save progress, or start a new game.
-- `Save Progress` keeps used questions saved on that device, which is useful when Philopoly stretches over multiple sessions.
-- `New Game` resets the shared used-question history for the current game code.
-- Tap `Sound On` once when the game opens so phone browsers allow the buzzer. The buzzer also vibrates on phones that support vibration.
+- Every phone should use the same `Room`, such as `game-1`, when playing the same shared game. Type the room code and tap `Join`.
+- In live mode, the Apps Script reserves each drawn question for that room so multiple phones share the same used-question history.
+- The board has rows for every category and columns for `Easy`, `Medium`, `Difficult`, and `Random`.
+- `Type answer` mode lets players type an answer and tap `Check`.
+- `Host mode` hides the typing box and lets the host use `Correct`, `Missed`, `Show answer`, `Restart timer`, `Skip`, and `End game`.
+- `Correct` and `Missed` judge the current question and then move to the next question after a short pause.
+- `Skip` pulls another question from the same category and level.
+- `End game` saves progress and returns to the board.
+- `New game` resets the shared used-question history for the current room.
+- Open `Sound` to set the timer tick, buzzer, correct-answer sound, missed-answer sound, volume, and mute setting.
 
 ## Connect The Google Sheet
 

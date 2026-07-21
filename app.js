@@ -9,13 +9,6 @@ const DEMO_DATA = {
     allowModeSwitch: true,
     showEndGameButton: true,
     buzzerText: "Time!",
-    primaryColor: "#2B0A3D",
-    backgroundColor: "#050307",
-    panelColor: "#12071A",
-    creamColor: "#FFF4D6",
-    goldColor: "#D8B35A",
-    accentColor: "#4B1768",
-    buttonTextColor: "#FFF4D6",
     acceptedVariationSeparator: "|"
   },
   categories: [
@@ -24,7 +17,7 @@ const DEMO_DATA = {
       questions: [
         { id: "demo-movies-1", level: "easy", question: "What movie features the song \"Hakuna Matata\"?", answer: "The Lion King", acceptedVariations: ["Lion King"] },
         { id: "demo-movies-2", level: "medium", question: "What fictional school does Harry Potter attend?", answer: "Hogwarts", acceptedVariations: ["Hogwarts School"] },
-        { id: "demo-movies-3", level: "difficult", question: "What year did the first Jurassic Park movie release?", answer: "1993", acceptedVariations: ["nineteen ninety three"] }
+        { id: "demo-movies-3", level: "difficult", question: "What year did the first \"Jurassic Park\" movie release?", answer: "1993", acceptedVariations: ["nineteen ninety three"] }
       ]
     },
     {
@@ -39,6 +32,93 @@ const DEMO_DATA = {
   generatedAt: "demo"
 };
 
+const LEVELS = [
+  { id: "easy", label: "Easy", diamonds: "◆" },
+  { id: "medium", label: "Medium", diamonds: "◆◆" },
+  { id: "difficult", label: "Difficult", diamonds: "◆◆◆" },
+  { id: "surprise", label: "Random", diamonds: "" }
+];
+
+const RULES = [
+  {
+    icon: "target",
+    title: "Pick a space",
+    description: "Choose All categories or one category, then tap a diamond level or Random."
+  },
+  {
+    icon: "clock",
+    title: "Beat the clock",
+    description: "Answer before the timer runs out. The final five seconds click so everyone can feel the countdown."
+  },
+  {
+    icon: "microphone",
+    title: "Choose your mode",
+    description: "Type answer checks the phone. Host mode lets one person judge answers out loud."
+  },
+  {
+    icon: "trophy",
+    title: "No repeats",
+    description: "A room will not reuse a question space until every matching space has been played."
+  },
+  {
+    icon: "cards",
+    title: "Keep it fresh",
+    description: "Update the Google Sheet whenever you want new questions, answers, or accepted variations."
+  }
+];
+
+const SOUND_OPTIONS = {
+  tick: {
+    title: "Timer tick",
+    defaultValue: "soft",
+    options: [
+      { value: "soft", label: "Soft tick" },
+      { value: "heartbeat", label: "Heartbeat" },
+      { value: "clock", label: "Clock" },
+      { value: "off", label: "Off" }
+    ]
+  },
+  buzzer: {
+    title: "Buzzer",
+    defaultValue: "classic",
+    options: [
+      { value: "classic", label: "Classic buzz" },
+      { value: "gong", label: "Gong" },
+      { value: "airhorn", label: "Air horn" },
+      { value: "bell", label: "Bell" }
+    ]
+  },
+  correct: {
+    title: "Correct answer",
+    defaultValue: "chime",
+    options: [
+      { value: "chime", label: "Chime" },
+      { value: "fanfare", label: "Fanfare" },
+      { value: "applause", label: "Applause" },
+      { value: "ding", label: "Ding" }
+    ]
+  },
+  missed: {
+    title: "Missed answer",
+    defaultValue: "buzzer",
+    options: [
+      { value: "womp", label: "Womp womp" },
+      { value: "thud", label: "Low thud" },
+      { value: "buzzer", label: "Buzzer" },
+      { value: "silent", label: "Silent" }
+    ]
+  }
+};
+
+const DEFAULT_SOUND_SETTINGS = {
+  volume: 0.8,
+  muted: false,
+  tick: SOUND_OPTIONS.tick.defaultValue,
+  buzzer: SOUND_OPTIONS.buzzer.defaultValue,
+  correct: SOUND_OPTIONS.correct.defaultValue,
+  missed: SOUND_OPTIONS.missed.defaultValue
+};
+
 const config = window.TRIVIA_CONFIG || {};
 const els = {};
 const state = {
@@ -48,19 +128,25 @@ const state = {
   activeQuestion: null,
   used: new Set(),
   timerId: null,
+  advanceTimerId: null,
   timerSeconds: 30,
   remaining: 30,
+  questionNumber: 0,
   playMode: "typed",
   allowModeSwitch: true,
   gameCode: "game-1",
   sharedUsedCount: 0,
   sharedTotalCount: 0,
   soundUnlocked: false,
-  audioContext: null
+  audioContext: null,
+  soundSettings: { ...DEFAULT_SOUND_SETTINGS }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
   cacheElements();
+  loadSoundSettings();
+  renderRules();
+  renderSoundSettings();
   bindEvents();
   loadUsedQuestions();
   loadGameCode();
@@ -75,14 +161,22 @@ function cacheElements() {
     "soundButton",
     "reloadButton",
     "resetUsedButton",
+    "rulesButton",
+    "closeRulesButton",
+    "rulesOverlay",
+    "rulesList",
+    "soundOverlay",
+    "closeSoundButton",
+    "masterVolumeInput",
+    "volumeReadout",
+    "soundChannels",
+    "muteToggle",
     "gameCodeInput",
     "saveGameCodeButton",
     "gameCodeNote",
     "categoryGrid",
     "homeView",
     "questionView",
-    "difficultySheet",
-    "closeDifficultyButton",
     "backButton",
     "activeCategory",
     "activeLevel",
@@ -91,6 +185,7 @@ function cacheElements() {
     "hostModeButton",
     "timerDial",
     "timerValue",
+    "timerBar",
     "questionHeading",
     "poolCount",
     "answerForm",
@@ -107,12 +202,6 @@ function cacheElements() {
     "showAnswerButton",
     "restartTimerButton",
     "endGameButton",
-    "endGameSheet",
-    "closeEndGameButton",
-    "endGameSummary",
-    "resumeGameButton",
-    "saveProgressButton",
-    "newGameButton",
     "toast"
   ].forEach((id) => {
     els[id] = document.getElementById(id);
@@ -121,45 +210,50 @@ function cacheElements() {
 
 function bindEvents() {
   document.addEventListener("pointerdown", unlockAudio, { once: true });
-  els.soundButton.addEventListener("click", testSound);
+  document.addEventListener("keydown", handleKeyboard);
+  els.rulesButton.addEventListener("click", openRulesOverlay);
+  els.closeRulesButton.addEventListener("click", closeRulesOverlay);
+  els.rulesOverlay.addEventListener("click", (event) => {
+    if (event.target === els.rulesOverlay) closeRulesOverlay();
+  });
+  els.soundButton.addEventListener("click", openSoundOverlay);
+  els.closeSoundButton.addEventListener("click", closeSoundOverlay);
+  els.soundOverlay.addEventListener("click", (event) => {
+    if (event.target === els.soundOverlay) closeSoundOverlay();
+  });
   els.reloadButton.addEventListener("click", loadGameData);
-  els.resetUsedButton.addEventListener("click", resetUsedQuestions);
+  els.resetUsedButton.addEventListener("click", startNewGame);
   els.saveGameCodeButton.addEventListener("click", saveGameCode);
-  els.closeDifficultyButton.addEventListener("click", closeDifficultySheet);
+  els.gameCodeInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") saveGameCode();
+  });
   els.backButton.addEventListener("click", showHome);
   els.typedModeButton.addEventListener("click", () => setPlayMode("typed"));
   els.hostModeButton.addEventListener("click", () => setPlayMode("host"));
   els.answerForm.addEventListener("submit", checkAnswer);
   els.nextButton.addEventListener("click", () => drawQuestion());
   els.selectAgainButton.addEventListener("click", selectAgain);
-  els.skipButton.addEventListener("click", () => {
-    showToast("Skipped");
-    drawQuestion();
-  });
+  els.skipButton.addEventListener("click", handleSkip);
   els.showAnswerButton.addEventListener("click", revealAnswer);
   els.hostCorrectButton.addEventListener("click", () => markHostResult(true));
   els.hostMissedButton.addEventListener("click", () => markHostResult(false));
   els.restartTimerButton.addEventListener("click", restartTimer);
-  els.endGameButton.addEventListener("click", openEndGame);
-  els.closeEndGameButton.addEventListener("click", () => closeEndGame(false));
-  els.resumeGameButton.addEventListener("click", () => closeEndGame(true));
-  els.saveProgressButton.addEventListener("click", saveProgressAndExit);
-  els.newGameButton.addEventListener("click", startNewGame);
-  document.querySelectorAll(".difficulty-button").forEach((button) => {
-    button.addEventListener("click", () => startRound(button.dataset.level));
-  });
+  els.endGameButton.addEventListener("click", saveProgressAndExit);
+  els.masterVolumeInput.addEventListener("input", handleVolumeInput);
+  els.muteToggle.addEventListener("change", handleMuteToggle);
 }
 
 async function loadGameData() {
   setStatus("Loading");
   stopTimer();
+  clearScheduledAdvance();
   try {
     if (config.dataUrl) {
       state.data = normalizePayload(await loadJsonp(config.dataUrl, {
         action: "data",
         gameCode: state.gameCode
       }));
-      setStatus(`Live: ${state.gameCode}`);
+      setStatus(`Room: ${state.gameCode}`);
     } else if (config.useDemoDataWhenEmpty !== false) {
       state.data = normalizePayload(DEMO_DATA);
       setStatus("Preview");
@@ -171,7 +265,7 @@ async function loadGameData() {
     showHome();
   } catch (error) {
     console.error(error);
-    setStatus("Data Error");
+    setStatus("Data error");
     showToast("Could not load questions. Check the Apps Script URL.");
   }
 }
@@ -245,18 +339,10 @@ function normalizeQuestion(question, fallbackId = "question") {
 }
 
 function applySettings() {
-  const settings = state.data.settings;
   state.timerSeconds = numberSetting("timerSeconds", 30);
   els.gameTitle.textContent = textSetting("gameTitle", "Philopoly");
   els.subtitle.textContent = textSetting("subtitle", "Choose a category, pick a level, and answer before the buzzer.");
   document.title = els.gameTitle.textContent;
-  setCssVar("--primary", textSetting("primaryColor", "#2B0A3D"));
-  setCssVar("--background", textSetting("backgroundColor", "#050307"));
-  setCssVar("--panel", textSetting("panelColor", "#12071A"));
-  setCssVar("--cream", textSetting("creamColor", "#FFF4D6"));
-  setCssVar("--gold", textSetting("goldColor", "#D8B35A"));
-  setCssVar("--accent", textSetting("accentColor", "#4B1768"));
-  setCssVar("--button-text", textSetting("buttonTextColor", "#FFF4D6"));
   state.playMode = normalizePlayMode(window.localStorage.getItem(modeKey()) || textSetting("defaultAnswerMode", "typed"));
   state.allowModeSwitch = booleanSetting("allowModeSwitch", true);
   els.modeSwitch.hidden = !state.allowModeSwitch;
@@ -264,52 +350,78 @@ function applySettings() {
   els.showAnswerButton.hidden = !booleanSetting("showAnswerButton", true);
   els.endGameButton.hidden = !booleanSetting("showEndGameButton", true);
   state.sharedUsedCount = Number(state.data.sharedState?.usedCount || state.used.size || 0);
-  state.sharedTotalCount = Number(state.data.sharedState?.totalCount || 0);
+  state.sharedTotalCount = Number(state.data.sharedState?.totalCount || totalQuestionCount() || 0);
   updateGameCodeNote();
   applyPlayMode();
 }
 
 function renderCategories() {
   els.categoryGrid.innerHTML = "";
-  const allButton = createCategoryButton({
-    name: "All Categories",
-    questions: state.data.categories.flatMap((category) => category.questions)
-  });
-  allButton.dataset.category = "__all";
-  els.categoryGrid.appendChild(allButton);
+  if (!state.data) return;
+
+  const allQuestions = state.data.categories.flatMap((category) =>
+    category.questions.map((question) => ({ ...question, categoryName: category.name }))
+  );
+  els.categoryGrid.appendChild(createCategoryRow({
+    name: "All categories",
+    key: "__all",
+    questions: allQuestions,
+    featured: true
+  }));
 
   state.data.categories.forEach((category) => {
-    const button = createCategoryButton(category);
-    button.dataset.category = category.name;
-    els.categoryGrid.appendChild(button);
+    els.categoryGrid.appendChild(createCategoryRow({
+      name: category.name,
+      key: category.name,
+      questions: category.questions,
+      featured: false
+    }));
   });
 }
 
-function createCategoryButton(category) {
-  const button = document.createElement("button");
-  button.className = "category-button";
-  button.type = "button";
-  button.innerHTML = `<strong>${escapeHtml(category.name)}</strong><span>${category.questions.length} questions</span>`;
-  button.addEventListener("click", () => {
-    state.selectedCategory = button.dataset.category;
-    openDifficultySheet(category.name);
+function createCategoryRow(category) {
+  const row = document.createElement("div");
+  row.className = `board-row category-row${category.featured ? " all-row" : ""}`;
+
+  const categoryCell = document.createElement("div");
+  categoryCell.className = "category-cell";
+  categoryCell.innerHTML = `
+    <span class="category-icon" aria-hidden="true">${iconSvg(category.featured ? "grid" : categoryIconType(category.name))}</span>
+    <span>
+      <span class="category-name">${escapeHtml(category.name)}</span>
+      <span class="category-count">${category.questions.length} question spaces</span>
+    </span>
+  `;
+  row.appendChild(categoryCell);
+
+  LEVELS.forEach((level) => {
+    const count = level.id === "surprise"
+      ? category.questions.length
+      : category.questions.filter((question) => question.level === level.id).length;
+    const cell = document.createElement("div");
+    cell.className = "level-cell";
+    const button = document.createElement("button");
+    button.className = `level-button${level.id === "surprise" ? " random-button" : ""}`;
+    button.type = "button";
+    button.disabled = count === 0;
+    button.setAttribute("aria-label", `${category.name}, ${level.label}, ${count} question spaces`);
+    button.title = `${category.name} · ${level.label} · ${count} question spaces`;
+    button.innerHTML = level.id === "surprise"
+      ? `<span class="shuffle-icon" aria-hidden="true">${iconSvg("shuffle")}</span>`
+      : `<span aria-hidden="true">${level.diamonds}</span>`;
+    button.addEventListener("click", () => startRound(category.key, level.id));
+    cell.appendChild(button);
+    row.appendChild(cell);
   });
-  return button;
+
+  return row;
 }
 
-function openDifficultySheet(categoryName) {
-  els.difficultySheet.classList.remove("hidden");
-  document.getElementById("difficultyTitle").textContent = categoryName;
-}
-
-function closeDifficultySheet() {
-  els.difficultySheet.classList.add("hidden");
-}
-
-function startRound(level) {
+function startRound(categoryKey, level) {
   unlockAudio();
+  clearScheduledAdvance();
+  state.selectedCategory = categoryKey;
   state.selectedLevel = normalizeLevel(level);
-  closeDifficultySheet();
   els.homeView.classList.add("hidden");
   els.questionView.classList.remove("hidden");
   drawQuestion();
@@ -317,6 +429,7 @@ function startRound(level) {
 
 async function drawQuestion() {
   unlockAudio();
+  clearScheduledAdvance();
   if (config.dataUrl) {
     await drawSharedQuestion();
     return;
@@ -339,14 +452,16 @@ async function drawQuestion() {
 
   state.activeQuestion = available[Math.floor(Math.random() * available.length)];
   state.used.add(state.activeQuestion.id);
+  state.questionNumber += 1;
   saveUsedQuestions();
   renderQuestion(pool);
   restartTimer();
+  updateGameCodeNote();
 }
 
 async function drawSharedQuestion() {
   try {
-    setStatus(`Drawing: ${state.gameCode}`);
+    setStatus("Drawing");
     const payload = await loadJsonp(config.dataUrl, {
       action: "draw",
       gameCode: state.gameCode,
@@ -358,21 +473,27 @@ async function drawSharedQuestion() {
       stopTimer();
       clearQuestion();
       showToast(payload.message || "No questions found for that choice.");
-      setStatus(`Live: ${state.gameCode}`);
+      setStatus(`Room: ${state.gameCode}`);
       return;
     }
 
     state.activeQuestion = normalizeQuestion(payload.question);
+    if (!state.activeQuestion.categoryName && state.selectedCategory && state.selectedCategory !== "__all") {
+      state.activeQuestion.categoryName = state.selectedCategory;
+    }
     state.sharedUsedCount = Number(payload.usedCount || 0);
-    state.sharedTotalCount = Number(payload.totalCount || 0);
+    state.sharedTotalCount = Number(payload.totalCount || totalQuestionCount() || 0);
+    state.questionNumber += 1;
     if (payload.refreshed) showToast("That question set has refreshed.");
     renderQuestion(null, payload);
     restartTimer();
-    setStatus(`Live: ${state.gameCode}`);
+    setStatus(`Room: ${state.gameCode}`);
     updateGameCodeNote();
   } catch (error) {
     console.error(error);
-    setStatus("Data Error");
+    stopTimer();
+    clearQuestion();
+    setStatus("Data error");
     showToast("Could not draw a shared question. Check the Apps Script URL.");
   }
 }
@@ -391,35 +512,43 @@ function getCurrentPool() {
 
 function renderQuestion(pool, stats = null) {
   const question = state.activeQuestion;
-  els.activeCategory.textContent = question.categoryName;
-  els.activeLevel.textContent = displayLevel(state.selectedLevel);
-  els.questionHeading.textContent = question.question;
+  const categoryName = question.categoryName || (state.selectedCategory === "__all" ? "All categories" : state.selectedCategory || "Category");
+  els.activeCategory.textContent = categoryName;
+  els.activeLevel.textContent = `${levelDiamonds(question.level)} ${displayLevel(question.level)}`;
+  els.questionHeading.innerHTML = formatQuestionText(question.question);
   els.answerInput.value = "";
   els.answerInput.disabled = false;
   els.answerText.textContent = question.answer;
   els.answerPanel.classList.add("hidden");
   els.feedback.textContent = "";
   els.feedback.className = "feedback";
+  els.questionView.classList.remove("final-five");
   applyPlayMode();
   updatePoolCount(pool, stats);
 }
 
 function clearQuestion() {
   state.activeQuestion = null;
+  els.activeCategory.textContent = state.selectedCategory === "__all" ? "All categories" : state.selectedCategory || "Category";
+  els.activeLevel.textContent = displayLevel(state.selectedLevel || "surprise");
   els.questionHeading.textContent = "No question available.";
+  els.answerInput.value = "";
+  els.answerInput.disabled = true;
   els.answerText.textContent = "";
   els.answerPanel.classList.add("hidden");
   els.feedback.textContent = "";
   updatePoolCount([]);
+  renderTimer();
 }
 
 function updatePoolCount(pool = getCurrentPool(), stats = null) {
+  let left;
   if (stats) {
-    els.poolCount.textContent = `${Number(stats.poolRemaining || 0)} left in this set for ${state.gameCode}`;
-    return;
+    left = Number(stats.poolRemaining || 0);
+  } else {
+    left = pool.filter((question) => !state.used.has(question.id)).length;
   }
-  const left = pool.filter((question) => !state.used.has(question.id)).length;
-  els.poolCount.textContent = `${left} left in this set`;
+  els.poolCount.textContent = `Question ${state.questionNumber} · ${left} left in this set`;
 }
 
 function checkAnswer(event) {
@@ -432,22 +561,46 @@ function checkAnswer(event) {
   ].map(normalizeAnswer);
 
   if (typed && accepted.includes(typed)) {
-    els.feedback.textContent = "Correct";
-    els.feedback.className = "feedback correct";
-    playTone("correct");
-    stopTimer();
+    markResult(true);
   } else {
     els.feedback.textContent = "Try again or show the answer.";
     els.feedback.className = "feedback incorrect";
+    playTone("missed");
   }
 }
 
 function markHostResult(isCorrect) {
   if (!state.activeQuestion) return;
+  markResult(isCorrect);
+}
+
+function markResult(isCorrect) {
+  stopTimer();
   els.feedback.textContent = isCorrect ? "Correct" : "Missed";
   els.feedback.className = isCorrect ? "feedback correct" : "feedback incorrect";
-  if (isCorrect) playTone("correct");
-  stopTimer();
+  playTone(isCorrect ? "correct" : "missed");
+  flashVerdict(isCorrect);
+  scheduleNextQuestion();
+}
+
+function flashVerdict(isCorrect) {
+  const button = isCorrect ? els.hostCorrectButton : els.hostMissedButton;
+  button.classList.add("flash");
+  window.setTimeout(() => button.classList.remove("flash"), 240);
+}
+
+function scheduleNextQuestion() {
+  clearScheduledAdvance();
+  state.advanceTimerId = window.setTimeout(() => {
+    drawQuestion();
+  }, 850);
+}
+
+function clearScheduledAdvance() {
+  if (state.advanceTimerId) {
+    window.clearTimeout(state.advanceTimerId);
+    state.advanceTimerId = null;
+  }
 }
 
 function revealAnswer() {
@@ -455,9 +608,12 @@ function revealAnswer() {
   els.answerPanel.classList.remove("hidden");
   els.answerInput.disabled = true;
   stopTimer();
+  clearScheduledAdvance();
 }
 
 function restartTimer() {
+  if (!state.activeQuestion) return;
+  clearScheduledAdvance();
   stopTimer();
   state.remaining = state.timerSeconds;
   renderTimer();
@@ -470,7 +626,9 @@ function startTimer() {
   state.timerId = window.setInterval(() => {
     state.remaining -= 1;
     renderTimer();
-    if (state.remaining <= 0) {
+    if (state.remaining > 0 && state.remaining <= 5) {
+      playTone("tick");
+    } else if (state.remaining <= 0) {
       stopTimer();
       els.feedback.textContent = textSetting("buzzerText", "Time!");
       els.feedback.className = "feedback timeout";
@@ -490,20 +648,29 @@ function renderTimer() {
   const seconds = Math.max(0, state.remaining);
   const percent = state.timerSeconds ? Math.max(0, Math.min(100, (seconds / state.timerSeconds) * 100)) : 0;
   els.timerValue.textContent = seconds;
-  els.timerDial.style.setProperty("--timer-progress", `${percent}%`);
+  document.documentElement.style.setProperty("--timer-percent", `${percent}%`);
+  els.questionView.classList.toggle("final-five", seconds <= 5 && seconds >= 0 && Boolean(state.activeQuestion));
 }
 
 function showHome() {
   stopTimer();
-  closeDifficultySheet();
-  closeEndGame(false);
+  clearScheduledAdvance();
+  closeRulesOverlay();
+  closeSoundOverlay();
   els.homeView.classList.remove("hidden");
   els.questionView.classList.add("hidden");
+  updateGameCodeNote();
 }
 
 function selectAgain() {
   showHome();
   showToast("Choose the next turn.");
+}
+
+function handleSkip() {
+  if (!state.activeQuestion) return;
+  showToast("Skipped.");
+  drawQuestion();
 }
 
 function loadGameCode() {
@@ -517,10 +684,11 @@ function saveGameCode() {
   state.gameCode = normalizeGameCode(els.gameCodeInput.value || "game-1");
   els.gameCodeInput.value = state.gameCode;
   window.localStorage.setItem(gameCodeKey(), state.gameCode);
+  state.questionNumber = 0;
   loadUsedQuestions();
   updateGameCodeNote();
   loadGameData();
-  showToast(`Using game code ${state.gameCode}.`);
+  showToast(`Joined ${state.gameCode}.`);
 }
 
 function setPlayMode(mode) {
@@ -544,38 +712,24 @@ function applyPlayMode() {
   }
 }
 
-function openEndGame() {
-  stopTimer();
-  const usedCount = config.dataUrl ? state.sharedUsedCount : state.used.size;
-  const totalCount = config.dataUrl
-    ? state.sharedTotalCount
-    : state.data ? state.data.categories.flatMap((category) => category.questions).length : 0;
-  const scope = config.dataUrl ? `for ${state.gameCode}` : "on this device";
-  els.endGameSummary.textContent = `${usedCount} of ${totalCount} question spaces used ${scope}.`;
-  els.endGameSheet.classList.remove("hidden");
-}
-
-function closeEndGame(shouldResume) {
-  els.endGameSheet.classList.add("hidden");
-  if (shouldResume && state.activeQuestion && state.remaining > 0) {
-    startTimer();
-  }
-}
-
 async function saveProgressAndExit() {
+  stopTimer();
+  clearScheduledAdvance();
   if (config.dataUrl) {
     await loadJsonp(config.dataUrl, {
       action: "end",
       gameCode: state.gameCode
     }).catch(() => null);
   }
-  closeEndGame(false);
   showHome();
-  showToast("Progress saved.");
+  showToast("Game ended. Progress saved.");
 }
 
 async function startNewGame() {
+  stopTimer();
+  clearScheduledAdvance();
   state.used.clear();
+  state.questionNumber = 0;
   saveUsedQuestions();
   if (config.dataUrl) {
     await loadJsonp(config.dataUrl, {
@@ -583,26 +737,15 @@ async function startNewGame() {
       gameCode: state.gameCode
     }).catch(() => null);
     state.sharedUsedCount = 0;
-    updateGameCodeNote();
   }
-  closeEndGame(false);
+  updatePoolCountSafe();
+  updateGameCodeNote();
   showHome();
   showToast("New game started.");
 }
 
-async function resetUsedQuestions() {
-  state.used.clear();
-  saveUsedQuestions();
-  if (config.dataUrl) {
-    await loadJsonp(config.dataUrl, {
-      action: "reset",
-      gameCode: state.gameCode
-    }).catch(() => null);
-    state.sharedUsedCount = 0;
-    updateGameCodeNote();
-  }
-  updatePoolCount();
-  showToast("Used questions reset.");
+function updatePoolCountSafe() {
+  if (state.activeQuestion) updatePoolCount();
 }
 
 function loadUsedQuestions() {
@@ -630,45 +773,237 @@ function gameCodeKey() {
   return `${config.storageKey || "philopoly-trivia"}:${config.spreadsheetId || "demo"}:game-code`;
 }
 
+function soundKey() {
+  return `${config.storageKey || "philopoly-trivia"}:sound-settings`;
+}
+
+function renderRules() {
+  els.rulesList.innerHTML = RULES.map((rule) => `
+    <article class="rule-item">
+      <span class="rule-badge" aria-hidden="true">${iconSvg(rule.icon)}</span>
+      <div>
+        <h3>${escapeHtml(rule.title)}</h3>
+        <p>${escapeHtml(rule.description)}</p>
+      </div>
+    </article>
+  `).join("");
+}
+
+function openRulesOverlay() {
+  els.rulesOverlay.classList.remove("hidden");
+}
+
+function closeRulesOverlay() {
+  els.rulesOverlay.classList.add("hidden");
+}
+
+function openSoundOverlay() {
+  unlockAudio();
+  renderSoundSettings();
+  els.soundOverlay.classList.remove("hidden");
+}
+
+function closeSoundOverlay() {
+  els.soundOverlay.classList.add("hidden");
+}
+
+function renderSoundSettings() {
+  els.masterVolumeInput.value = String(Math.round(state.soundSettings.volume * 100));
+  els.volumeReadout.textContent = `${Math.round(state.soundSettings.volume * 100)}%`;
+  els.muteToggle.checked = state.soundSettings.muted;
+  els.soundChannels.innerHTML = Object.entries(SOUND_OPTIONS).map(([channel, definition]) => `
+    <section class="sound-channel" data-channel="${channel}">
+      <div class="sound-channel-head">
+        <span class="sound-channel-title">${escapeHtml(definition.title)}</span>
+        <button class="preview-button" type="button" data-preview="${channel}" aria-label="Preview ${escapeHtml(definition.title)}">▶</button>
+      </div>
+      <div class="sound-options">
+        ${definition.options.map((option) => `
+          <button class="sound-chip${state.soundSettings[channel] === option.value ? " active" : ""}" type="button" data-channel="${channel}" data-sound="${option.value}">
+            ${escapeHtml(option.label)}
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  `).join("");
+
+  els.soundChannels.querySelectorAll(".sound-chip").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.soundSettings[button.dataset.channel] = button.dataset.sound;
+      saveSoundSettings();
+      renderSoundSettings();
+      playTone(button.dataset.channel);
+    });
+  });
+
+  els.soundChannels.querySelectorAll(".preview-button").forEach((button) => {
+    button.addEventListener("click", () => playTone(button.dataset.preview));
+  });
+}
+
+function handleVolumeInput() {
+  state.soundSettings.volume = Number(els.masterVolumeInput.value) / 100;
+  els.volumeReadout.textContent = `${els.masterVolumeInput.value}%`;
+  saveSoundSettings();
+}
+
+function handleMuteToggle() {
+  state.soundSettings.muted = els.muteToggle.checked;
+  saveSoundSettings();
+}
+
+function loadSoundSettings() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(soundKey()) || "{}");
+    state.soundSettings = {
+      ...DEFAULT_SOUND_SETTINGS,
+      ...saved,
+      volume: clamp(Number(saved.volume ?? DEFAULT_SOUND_SETTINGS.volume), 0, 1),
+      muted: Boolean(saved.muted)
+    };
+  } catch {
+    state.soundSettings = { ...DEFAULT_SOUND_SETTINGS };
+  }
+}
+
+function saveSoundSettings() {
+  window.localStorage.setItem(soundKey(), JSON.stringify(state.soundSettings));
+}
+
 function unlockAudio() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext || state.soundUnlocked) return;
+  if (!AudioContext) return;
   state.audioContext = state.audioContext || new AudioContext();
   if (state.audioContext.state === "suspended") {
     state.audioContext.resume().catch(() => null);
   }
   state.soundUnlocked = true;
-  els.soundButton.textContent = "Sound On";
 }
 
-function testSound() {
-  unlockAudio();
-  playTone("correct");
-  if ("vibrate" in navigator) navigator.vibrate(80);
-  showToast("Sound is on.");
+function playTone(channel, overrideValue) {
+  const value = overrideValue || state.soundSettings[channel];
+  if (!value || value === "off" || value === "silent" || state.soundSettings.muted || state.soundSettings.volume <= 0) return;
+  const context = getAudioContext();
+  if (!context) return;
+
+  if ((channel === "buzzer" || channel === "missed") && "vibrate" in navigator) {
+    navigator.vibrate(channel === "buzzer" ? [240, 90, 240, 90, 320] : [180, 80, 180]);
+  }
+
+  if (channel === "tick") playTick(value, context);
+  if (channel === "buzzer") playBuzzer(value, context);
+  if (channel === "correct") playCorrect(value, context);
+  if (channel === "missed") playMissed(value, context);
 }
 
-function playTone(type) {
+function getAudioContext() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
+  if (!AudioContext) return null;
   state.audioContext = state.audioContext || new AudioContext();
-  const context = state.audioContext;
-  if (context.state === "suspended") {
-    context.resume().catch(() => null);
+  if (state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(() => null);
   }
+  return state.audioContext;
+}
 
-  if (type === "buzzer" && "vibrate" in navigator) {
-    navigator.vibrate([240, 90, 240, 90, 340]);
+function playTick(value, context) {
+  if (value === "heartbeat") {
+    playSequence(context, [
+      { start: 0, duration: 0.07, frequency: 110, type: "sine", gain: 0.22 },
+      { start: 0.12, duration: 0.08, frequency: 92, type: "sine", gain: 0.18 }
+    ]);
+    return;
   }
+  if (value === "clock") {
+    playSequence(context, [
+      { start: 0, duration: 0.035, frequency: 1180, type: "square", gain: 0.16 },
+      { start: 0.09, duration: 0.035, frequency: 760, type: "square", gain: 0.12 }
+    ]);
+    return;
+  }
+  playSequence(context, [
+    { start: 0, duration: 0.04, frequency: 980, type: "square", gain: 0.12 }
+  ]);
+}
 
-  const pulses = type === "buzzer"
-    ? [
-        { start: 0, duration: 0.22, frequency: 160 },
-        { start: 0.28, duration: 0.22, frequency: 120 },
-        { start: 0.56, duration: 0.34, frequency: 95 }
-      ]
-    : [{ start: 0, duration: 0.24, frequency: 720 }];
+function playBuzzer(value, context) {
+  if (value === "gong") {
+    playSequence(context, [
+      { start: 0, duration: 0.8, frequency: 180, endFrequency: 92, type: "triangle", gain: 0.48, attack: 0.02 }
+    ]);
+    return;
+  }
+  if (value === "airhorn") {
+    playSequence(context, [
+      { start: 0, duration: 0.42, frequency: 360, endFrequency: 250, type: "sawtooth", gain: 0.38 },
+      { start: 0.48, duration: 0.34, frequency: 430, endFrequency: 280, type: "sawtooth", gain: 0.34 }
+    ]);
+    return;
+  }
+  if (value === "bell") {
+    playSequence(context, [
+      { start: 0, duration: 0.5, frequency: 880, type: "sine", gain: 0.28 },
+      { start: 0.03, duration: 0.56, frequency: 1320, type: "sine", gain: 0.16 }
+    ]);
+    return;
+  }
+  playClassicBuzzer(context);
+}
 
+function playCorrect(value, context) {
+  if (value === "fanfare") {
+    playSequence(context, [
+      { start: 0, duration: 0.12, frequency: 523.25, type: "triangle", gain: 0.2 },
+      { start: 0.14, duration: 0.12, frequency: 659.25, type: "triangle", gain: 0.24 },
+      { start: 0.28, duration: 0.28, frequency: 783.99, type: "triangle", gain: 0.28 }
+    ]);
+    return;
+  }
+  if (value === "applause") {
+    for (let index = 0; index < 9; index += 1) {
+      playNoiseBurst(context, index * 0.055, 0.045, 0.12 + (index % 3) * 0.03);
+    }
+    return;
+  }
+  if (value === "ding") {
+    playSequence(context, [
+      { start: 0, duration: 0.28, frequency: 1046.5, type: "sine", gain: 0.25 }
+    ]);
+    return;
+  }
+  playSequence(context, [
+    { start: 0, duration: 0.16, frequency: 659.25, type: "sine", gain: 0.22 },
+    { start: 0.17, duration: 0.24, frequency: 987.77, type: "sine", gain: 0.26 }
+  ]);
+}
+
+function playMissed(value, context) {
+  if (value === "thud") {
+    playSequence(context, [
+      { start: 0, duration: 0.18, frequency: 82, endFrequency: 58, type: "sine", gain: 0.42, attack: 0.01 }
+    ]);
+    return;
+  }
+  if (value === "buzzer") {
+    playClassicBuzzer(context);
+    return;
+  }
+  playSequence(context, [
+    { start: 0, duration: 0.34, frequency: 220, endFrequency: 110, type: "sawtooth", gain: 0.28 },
+    { start: 0.36, duration: 0.32, frequency: 185, endFrequency: 92, type: "sawtooth", gain: 0.24 }
+  ]);
+}
+
+function playClassicBuzzer(context) {
+  playSequence(context, [
+    { start: 0, duration: 0.22, frequency: 160, type: "sawtooth", gain: 0.42 },
+    { start: 0.28, duration: 0.22, frequency: 120, type: "sawtooth", gain: 0.44 },
+    { start: 0.56, duration: 0.34, frequency: 95, type: "sawtooth", gain: 0.46 }
+  ]);
+}
+
+function playSequence(context, pulses) {
+  const volume = state.soundSettings.volume;
   pulses.forEach((pulse) => {
     const start = context.currentTime + pulse.start;
     const end = start + pulse.duration;
@@ -676,14 +1011,49 @@ function playTone(type) {
     const gain = context.createGain();
     oscillator.connect(gain);
     gain.connect(context.destination);
-    oscillator.type = type === "buzzer" ? "sawtooth" : "triangle";
+    oscillator.type = pulse.type || "sine";
     oscillator.frequency.setValueAtTime(pulse.frequency, start);
-    gain.gain.setValueAtTime(0.001, start);
-    gain.gain.exponentialRampToValueAtTime(type === "buzzer" ? 0.65 : 0.32, start + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, end);
+    if (pulse.endFrequency) {
+      oscillator.frequency.linearRampToValueAtTime(pulse.endFrequency, end);
+    }
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * (pulse.gain || 0.22)), start + (pulse.attack || 0.018));
+    gain.gain.exponentialRampToValueAtTime(0.0001, end);
     oscillator.start(start);
-    oscillator.stop(end + 0.02);
+    oscillator.stop(end + 0.03);
   });
+}
+
+function playNoiseBurst(context, offset, duration, gainValue) {
+  const bufferSize = Math.max(1, Math.floor(context.sampleRate * duration));
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < bufferSize; index += 1) {
+    data[index] = Math.random() * 2 - 1;
+  }
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  const filter = context.createBiquadFilter();
+  const start = context.currentTime + offset;
+  const end = start + duration;
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(1400 + Math.random() * 1200, start);
+  source.buffer = buffer;
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, state.soundSettings.volume * gainValue), start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, end);
+  source.start(start);
+  source.stop(end + 0.02);
+}
+
+function handleKeyboard(event) {
+  if (event.key === "Escape") {
+    closeRulesOverlay();
+    closeSoundOverlay();
+  }
 }
 
 function setStatus(text) {
@@ -699,11 +1069,8 @@ function showToast(message) {
 
 function updateGameCodeNote() {
   if (!els.gameCodeNote) return;
-  if (config.dataUrl) {
-    els.gameCodeNote.textContent = `${state.gameCode} is shared across phones. ${state.sharedUsedCount} question spaces used.`;
-  } else {
-    els.gameCodeNote.textContent = "Paste the Apps Script URL into config.js to share this code across phones.";
-  }
+  const usedCount = config.dataUrl ? state.sharedUsedCount : state.used.size;
+  els.gameCodeNote.textContent = `Tap any cell to start · ${usedCount} question spaces used on ${state.gameCode}`;
 }
 
 function textSetting(key, fallback) {
@@ -726,12 +1093,6 @@ function booleanSetting(key, fallback) {
 function isTruthy(value) {
   if (typeof value === "boolean") return value;
   return ["true", "yes", "y", "1", "block", "blocked", "hide"].includes(String(value || "").trim().toLowerCase());
-}
-
-function setCssVar(name, value) {
-  if (/^#[0-9a-f]{3,8}$/i.test(value)) {
-    document.documentElement.style.setProperty(name, value);
-  }
 }
 
 function normalizeLevel(level) {
@@ -758,7 +1119,15 @@ function normalizeGameCode(value) {
 }
 
 function displayLevel(level) {
-  return level === "surprise" ? "Surprise Me" : level.charAt(0).toUpperCase() + level.slice(1);
+  const normalized = normalizeLevel(level);
+  const match = LEVELS.find((item) => item.id === normalized);
+  return match ? match.label : "Random";
+}
+
+function levelDiamonds(level) {
+  const normalized = normalizeLevel(level);
+  const match = LEVELS.find((item) => item.id === normalized);
+  return match?.diamonds || "◆";
 }
 
 function normalizeAnswer(value) {
@@ -775,6 +1144,58 @@ function splitVariations(value) {
     .split("|")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function totalQuestionCount() {
+  return state.data ? state.data.categories.flatMap((category) => category.questions).length : 0;
+}
+
+function formatQuestionText(value) {
+  return escapeHtml(value)
+    .replace(/(&quot;)([^&]+?)(&quot;)/g, "$1<em>$2</em>$3")
+    .replace(/(“)(.+?)(”)/g, "$1<em>$2</em>$3");
+}
+
+function categoryIconType(name) {
+  const normalized = String(name || "").toLowerCase();
+  if (normalized.includes("movie")) return "film";
+  if (normalized.includes("music")) return "note";
+  if (normalized.includes("family")) return "people";
+  if (normalized.includes("wild")) return "cards";
+  if (normalized.includes("sport")) return "football";
+  if (normalized.includes("geography")) return "map";
+  if (normalized.includes("history")) return "building";
+  if (normalized.includes("science")) return "flask";
+  if (normalized.includes("food") || normalized.includes("drink")) return "utensils";
+  if (normalized.includes("tv") || normalized.includes("pop")) return "television";
+  return "grid";
+}
+
+function iconSvg(name) {
+  const icons = {
+    grid: '<rect x="4" y="4" width="6" height="6"></rect><rect x="14" y="4" width="6" height="6"></rect><rect x="4" y="14" width="6" height="6"></rect><rect x="14" y="14" width="6" height="6"></rect>',
+    film: '<rect x="4" y="5" width="16" height="14" rx="1"></rect><path d="M8 5v14M16 5v14M4 9h4M4 15h4M16 9h4M16 15h4"></path>',
+    note: '<path d="M9 18V5l10-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="16" cy="16" r="3"></circle>',
+    people: '<circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="10" r="2.4"></circle><path d="M3.5 20c.8-3.6 3-5.4 5.5-5.4s4.7 1.8 5.5 5.4"></path><path d="M13.8 15.5c2.4.2 4.2 1.7 4.9 4.5"></path>',
+    cards: '<rect x="5" y="6" width="9" height="13" rx="1"></rect><rect x="10" y="4" width="9" height="13" rx="1"></rect><path d="M9 10l1.5 1.5L12 10"></path>',
+    football: '<path d="M4 12c2-5.5 10-8 16-4-1 7-8 11-16 4Z"></path><path d="M8 14c3-1 5.5-3 7-6"></path><path d="M10 11l3 2M12 9l3 2"></path>',
+    map: '<path d="M4 6l5-2 6 2 5-2v14l-5 2-6-2-5 2V6Z"></path><path d="M9 4v14M15 6v14"></path>',
+    building: '<path d="M4 10h16M6 10v8M10 10v8M14 10v8M18 10v8M4 18h16M12 4l8 4H4l8-4Z"></path>',
+    flask: '<path d="M10 3h4M11 3v5l-5 9a3 3 0 0 0 2.6 4h6.8a3 3 0 0 0 2.6-4l-5-9V3"></path><path d="M8 16h8"></path>',
+    utensils: '<path d="M7 3v8M5 3v8M9 3v8M5 11h4M7 11v10"></path><path d="M16 3v18M16 3c3 2 4 5 2 8h-2"></path>',
+    television: '<rect x="4" y="6" width="16" height="11" rx="1"></rect><path d="M8 21h8M12 17v4M9 3l3 3 3-3"></path>',
+    shuffle: '<path d="M4 7h3c4 0 5 10 9 10h4"></path><path d="M4 17h3c1.8 0 3-1.8 4.2-3.9"></path><path d="M16 4l4 3-4 3M16 14l4 3-4 3"></path>',
+    target: '<circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="4"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3"></path>',
+    clock: '<circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path>',
+    microphone: '<rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11c0 4 3 7 7 7s7-3 7-7M12 18v3M9 21h6"></path>',
+    trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"></path><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v5M8 21h8M9 18h6"></path>'
+  };
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name] || icons.grid}</svg>`;
+}
+
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function escapeHtml(value) {

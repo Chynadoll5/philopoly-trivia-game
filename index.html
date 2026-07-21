@@ -3,85 +3,91 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#050307">
+    <meta name="theme-color" content="#1B1226">
     <title>Philopoly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650;9..144,750&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script defer src="config.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
     <div class="app-shell">
-      <header class="app-header">
-        <div>
-          <p class="kicker">Philopoly</p>
-          <h1 id="gameTitle">Philopoly</h1>
-          <p id="subtitle">Choose a category, pick a level, and answer before the buzzer.</p>
-        </div>
-        <div class="sync-panel" aria-live="polite">
-          <span id="syncStatus">Loading</span>
-          <button class="icon-text-button" id="soundButton" type="button">Sound On</button>
-          <button class="icon-text-button" id="reloadButton" type="button">Reload</button>
-        </div>
-      </header>
-
-      <main>
-        <section class="home-view" id="homeView" aria-labelledby="categoryHeading">
-          <div class="section-row">
-            <div>
-              <p class="section-label">Categories</p>
-              <h2 id="categoryHeading">Pick a category</h2>
-            </div>
-            <button class="quiet-button" id="resetUsedButton" type="button">New Game</button>
+      <section class="board-screen" id="homeView" aria-labelledby="gameTitle">
+        <header class="board-header">
+          <div class="brand-block">
+            <h1 id="gameTitle">Philopoly</h1>
+            <p id="subtitle">Choose a category, pick a level, and answer before the buzzer.</p>
           </div>
-          <div class="game-code-panel">
-            <label for="gameCodeInput">Game Code</label>
-            <div class="game-code-row">
+
+          <div class="board-actions" aria-label="Game controls">
+            <div class="room-chip">
+              <label for="gameCodeInput">Room</label>
               <input id="gameCodeInput" autocomplete="off" spellcheck="false" value="game-1">
-              <button class="secondary-button" id="saveGameCodeButton" type="button">Use Code</button>
             </div>
-            <p id="gameCodeNote">Use the same code on every phone for the same shared game.</p>
+            <button class="button button-join" id="saveGameCodeButton" type="button">Join</button>
+            <button class="button button-outline" id="rulesButton" type="button">Rules</button>
+            <button class="button button-outline" id="soundButton" type="button">Sound</button>
+            <button class="button button-gold" id="resetUsedButton" type="button">New game</button>
           </div>
-          <div class="category-grid" id="categoryGrid"></div>
-        </section>
+        </header>
 
-        <section class="question-view hidden" id="questionView" aria-labelledby="questionHeading">
-          <div class="question-topline">
-            <button class="quiet-button" id="backButton" type="button">Categories</button>
+        <main class="board-main">
+          <div class="board-table" aria-label="Philopoly question board">
+            <div class="board-row board-head" aria-hidden="true">
+              <div class="category-heading">Category</div>
+              <div>Easy</div>
+              <div>Medium</div>
+              <div>Difficult</div>
+              <div>Random</div>
+            </div>
+            <div class="category-grid" id="categoryGrid"></div>
+          </div>
+
+          <footer class="board-footer">
+            <p id="gameCodeNote">Tap any cell to start.</p>
+            <p class="legend"><span>◆ easy</span><span>◆◆ medium</span><span>◆◆◆ difficult</span></p>
+          </footer>
+        </main>
+      </section>
+
+      <section class="question-screen hidden" id="questionView" aria-labelledby="questionHeading">
+        <div class="timer-track" aria-hidden="true">
+          <div class="timer-fill" id="timerBar"></div>
+        </div>
+
+        <header class="question-status">
+          <div class="status-left">
+            <button class="text-link back-link" id="backButton" type="button">← Board</button>
             <div class="question-tags">
               <span id="activeCategory">Category</span>
-              <span id="activeLevel">Level</span>
+              <span id="activeLevel">◆ Level</span>
             </div>
           </div>
 
           <div class="mode-switch" id="modeSwitch" role="group" aria-label="Answer mode">
-            <button class="mode-button active" id="typedModeButton" type="button">Type Answer</button>
-            <button class="mode-button" id="hostModeButton" type="button">Host Mode</button>
+            <button class="mode-button active" id="typedModeButton" type="button">Type answer</button>
+            <button class="mode-button" id="hostModeButton" type="button">Host mode</button>
+          </div>
+        </header>
+
+        <main class="question-center">
+          <div class="countdown" id="timerDial" role="timer" aria-live="polite">
+            <span id="timerValue">30</span>
+            <span class="seconds-label" id="secondsLabel">Seconds</span>
           </div>
 
-          <div class="timer-row">
-            <div class="timer-dial" id="timerDial" role="timer" aria-live="polite">
-              <span id="timerValue">30</span>
-            </div>
-            <div>
-              <p class="section-label">Question</p>
-              <h2 id="questionHeading">Ready?</h2>
-              <p id="poolCount">0 left in this set</p>
-            </div>
-          </div>
+          <h2 class="question-text" id="questionHeading">Ready?</h2>
+          <p class="pool-count" id="poolCount">Question 0 · 0 left in this set</p>
 
           <form class="answer-form" id="answerForm">
-            <label for="answerInput">Your answer</label>
+            <label class="screen-reader" for="answerInput">Your answer</label>
             <input id="answerInput" autocomplete="off" inputmode="text" placeholder="Type your answer">
-            <button class="primary-button" type="submit">Check</button>
+            <button class="button answer-submit" type="submit">Check</button>
           </form>
 
-          <div class="host-controls hidden" id="hostControls">
-            <p class="section-label">Host Controls</p>
-            <div class="host-actions">
-              <button class="primary-button" id="hostCorrectButton" type="button">Correct</button>
-              <button class="secondary-button" id="hostMissedButton" type="button">Missed</button>
-            </div>
-          </div>
+          <div class="host-controls hidden" id="hostControls"></div>
 
           <div class="feedback" id="feedback" aria-live="polite"></div>
 
@@ -90,54 +96,66 @@
             <p id="answerText"></p>
           </div>
 
-          <div class="question-actions">
-            <button class="primary-button" id="nextButton" type="button">Shuffle Again</button>
-            <button class="secondary-button" id="selectAgainButton" type="button">Select Again</button>
-            <button class="secondary-button" id="skipButton" type="button">Skip</button>
-            <button class="secondary-button" id="showAnswerButton" type="button">Show Answer</button>
-            <button class="quiet-button" id="restartTimerButton" type="button">Restart Timer</button>
-            <button class="quiet-button danger-button" id="endGameButton" type="button">End Game</button>
+          <div class="utility-links">
+            <button class="text-link" id="showAnswerButton" type="button">Show answer</button>
+            <button class="text-link" id="restartTimerButton" type="button">Restart timer</button>
+            <button class="text-link" id="skipButton" type="button">Skip</button>
+            <button class="text-link danger-link" id="endGameButton" type="button">End game</button>
           </div>
-        </section>
-      </main>
+
+          <button class="hidden" id="nextButton" type="button" tabindex="-1">Next question</button>
+          <button class="hidden" id="selectAgainButton" type="button" tabindex="-1">Select again</button>
+        </main>
+
+        <div class="verdict-bar" aria-label="Answer verdict">
+          <button class="verdict-button verdict-correct" id="hostCorrectButton" type="button">✓ Correct</button>
+          <button class="verdict-button verdict-missed" id="hostMissedButton" type="button">✕ Missed</button>
+        </div>
+      </section>
     </div>
 
-    <div class="difficulty-sheet hidden" id="difficultySheet" role="dialog" aria-modal="true" aria-labelledby="difficultyTitle">
-      <div class="difficulty-panel">
-        <div class="difficulty-header">
+    <div class="overlay hidden" id="rulesOverlay" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+      <div class="modal-panel rules-panel">
+        <div class="modal-header">
           <div>
-            <p class="section-label">Level</p>
-            <h2 id="difficultyTitle">Choose a level</h2>
+            <p class="section-label">Rule book</p>
+            <h2 id="rulesTitle">How to play Philopoly</h2>
           </div>
-          <button class="quiet-button" id="closeDifficultyButton" type="button">Close</button>
+          <button class="button button-outline" id="closeRulesButton" type="button">Close</button>
         </div>
-        <div class="difficulty-grid">
-          <button class="difficulty-button" data-level="easy" type="button">Easy</button>
-          <button class="difficulty-button" data-level="medium" type="button">Medium</button>
-          <button class="difficulty-button" data-level="difficult" type="button">Difficult</button>
-          <button class="difficulty-button surprise" data-level="surprise" type="button">Surprise Me</button>
+        <div class="rules-list" id="rulesList"></div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="soundOverlay" role="dialog" aria-modal="true" aria-labelledby="soundTitle">
+      <div class="modal-panel sound-panel">
+        <div class="modal-header">
+          <div>
+            <p class="section-label">Sound settings</p>
+            <h2 id="soundTitle">Tune the table</h2>
+          </div>
+          <button class="button button-outline" id="closeSoundButton" type="button">Close</button>
+        </div>
+
+        <div class="volume-row">
+          <label for="masterVolumeInput">Master volume</label>
+          <input id="masterVolumeInput" type="range" min="0" max="100" step="1" value="80">
+          <span id="volumeReadout">80%</span>
+        </div>
+
+        <div class="sound-channels" id="soundChannels"></div>
+
+        <div class="mute-row">
+          <label class="toggle-row" for="muteToggle">
+            <input id="muteToggle" type="checkbox">
+            <span>Mute everything</span>
+          </label>
         </div>
       </div>
     </div>
 
-    <div class="endgame-sheet hidden" id="endGameSheet" role="dialog" aria-modal="true" aria-labelledby="endGameTitle">
-      <div class="endgame-panel">
-        <div class="difficulty-header">
-          <div>
-            <p class="section-label">Philopoly</p>
-            <h2 id="endGameTitle">End Game</h2>
-          </div>
-          <button class="quiet-button" id="closeEndGameButton" type="button">Close</button>
-        </div>
-        <p class="endgame-summary" id="endGameSummary">0 question spaces used.</p>
-        <div class="endgame-grid">
-          <button class="primary-button" id="resumeGameButton" type="button">Resume</button>
-          <button class="secondary-button" id="saveProgressButton" type="button">Save Progress</button>
-          <button class="quiet-button danger-button" id="newGameButton" type="button">New Game</button>
-        </div>
-      </div>
-    </div>
-
+    <button class="hidden" id="reloadButton" type="button" tabindex="-1">Reload questions</button>
+    <span class="screen-reader" id="syncStatus" aria-live="polite">Loading</span>
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
   </body>
 </html>
