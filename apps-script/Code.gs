@@ -129,15 +129,15 @@ function parseRulesBlocks_(blocks, title, sourceUrl) {
     if (sectionHeading) {
       finishOpenRuleBlocks_(getRuleTarget_(current));
       current = {
-        number: sectionHeading[1],
-        title: sectionHeading[2],
+        number: sectionHeading[0],
+        title: sectionHeading[1],
         body: [],
         lists: [],
         tables: [],
         subsections: []
       };
       sections.push(current);
-      autoSectionNumber = Number(sectionHeading[1]) + 1;
+      autoSectionNumber = Number(sectionHeading[0]) + 1;
       return;
     }
 
@@ -368,7 +368,7 @@ function findFirstRulesSectionIndex_(blocks) {
     const text = String(block.text || "").trim();
     if (/^table of contents$/i.test(text)) tableOfContentsIndex = index;
     const sectionHeading = readRuleSectionHeading_(block, numberedSectionIndexes.length + 1);
-    if (sectionHeading && sectionHeading[1] === "1") sectionOneIndexes.push(index);
+    if (sectionHeading && sectionHeading[0] === "1") sectionOneIndexes.push(index);
     if (sectionHeading) numberedSectionIndexes.push(index);
   });
 
