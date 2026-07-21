@@ -41,6 +41,19 @@
   height: 20px;
 }
 
+.toc-button.is-match {
+  color: var(--cream);
+}
+
+.toc-button.is-muted {
+  opacity: 0.48;
+}
+
+.toc-button.is-muted:hover,
+.toc-button.is-muted:focus-visible {
+  opacity: 1;
+}
+
 .rules-list {
   min-height: 0;
   overflow: auto;
