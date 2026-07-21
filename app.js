@@ -293,8 +293,8 @@ async function loadGameData(options = {}) {
     }
     applySettings();
     renderCategories();
-    if (!background || els.questionView.classList.contains("hidden")) {
-      showHome();
+    if (!background) {
+      showHome({ preserveOverlays: true });
     }
   } catch (error) {
     console.error(error);
@@ -760,14 +760,17 @@ function renderTimer() {
   els.questionView.classList.toggle("final-five", seconds <= 5 && seconds >= 0 && Boolean(state.activeQuestion));
 }
 
-function showHome() {
+function showHome(options = {}) {
+  const { preserveOverlays = false } = options;
   stopTimer();
   clearScheduledAdvance();
   state.questionStarted = false;
   els.startGate.classList.add("hidden");
   els.utilityLinks.classList.remove("hidden");
-  closeRulesOverlay();
-  closeSoundOverlay();
+  if (!preserveOverlays) {
+    closeRulesOverlay();
+    closeSoundOverlay();
+  }
   els.homeView.classList.remove("hidden");
   els.questionView.classList.add("hidden");
   updateGameCodeNote();
