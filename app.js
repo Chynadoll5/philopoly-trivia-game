@@ -94,7 +94,18 @@ const DEFAULT_SOUND_SETTINGS = {
   missed: "alarm"
 };
 
-const config = window.TRIVIA_CONFIG || {};
+const DEFAULT_CONFIG = {
+  dataUrl: "https://script.google.com/macros/s/AKfycbwavxh7EUvWiAUBbu356EUn3LwH0EENq1tWGfTH1d_S7MBZKgPjGbihCRaWEodl8oBn/exec",
+  spreadsheetId: "1b6_V2o3BThSVcRt0YJG4Y_sTqerqP6Zbw6s2Ef0CVlE",
+  rulesDocumentUrl: "https://docs.google.com/document/d/1Mz6LMi-AY4o8MmGC6tFIRQpljWRb5ZLC/edit",
+  useDemoDataWhenEmpty: true,
+  storageKey: "philopoly-trivia-game"
+};
+
+const config = {
+  ...DEFAULT_CONFIG,
+  ...(window.TRIVIA_CONFIG || {})
+};
 const els = {};
 const state = {
   data: null,
@@ -972,10 +983,13 @@ function renderRules(query = "") {
   ].join("");
 
   if (!sections.length) {
+    const emptyMessages = book.intro?.length
+      ? book.intro
+      : ["Tap Rules again in a moment. If this keeps happening, the Apps Script needs access to the rule document."];
     els.rulesList.innerHTML = `
       <article class="rules-empty">
-        <h3>Rules unavailable</h3>
-        <p>Tap Rules again in a moment. If this keeps happening, the Apps Script needs access to the rule document.</p>
+        <h3>${highlightText(book.title || "Rules unavailable", rawQuery)}</h3>
+        ${emptyMessages.map((message) => `<p>${highlightText(message, rawQuery)}</p>`).join("")}
       </article>
     `;
   }
@@ -1103,7 +1117,19 @@ function showRulesLoading(message = "Loading latest rules from your Google docum
 }
 
 async function loadRulesBookFromBackend() {
-  if (!config.dataUrl || state.rulesLoading) return;
+  if (state.rulesLoading) return;
+  if (!config.dataUrl) {
+    state.ruleBook = normalizeRuleBook({
+      title: "Rules unavailable",
+      intro: [
+        "The game is missing its Apps Script URL.",
+        "Check config.js or redeploy the latest GitHub files."
+      ],
+      sections: []
+    });
+    renderRules(els.rulesSearchInput.value);
+    return;
+  }
   state.rulesLoading = true;
   showRulesLoading(state.rulesLoaded ? "Refreshing rules from your Google document..." : "Loading latest rules from your Google document...");
   try {
