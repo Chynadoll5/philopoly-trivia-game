@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#1B1226">
+    <title>Philopoly Sound Auditions</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,750&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sound-audition.css?v=20260721-1">
+    <script defer src="sound-audition.js?v=20260721-1"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="header-inner">
+        <div>
+          <p class="eyebrow">Philopoly sound studio</p>
+          <h1>Choose the sounds you want</h1>
+          <p class="intro">Play every option, then select one sound in each section.</p>
+        </div>
+        <a class="game-link" href="index.html">Back to the game</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="notice-band" aria-label="Preview notice">
+        <div class="notice-inner">
+          <strong>Preview only</strong>
+          <span>Nothing on this page changes the live game. I will install your winners after you choose them.</span>
+        </div>
+      </section>
+
+      <section class="controls-band" aria-label="Sound preview controls">
+        <div class="controls-inner">
+          <label class="volume-control" for="previewVolume">
+            <span>Preview volume</span>
+            <input id="previewVolume" type="range" min="0" max="100" value="100">
+            <output id="volumeValue" for="previewVolume">100%</output>
+          </label>
+          <button class="secondary-button" id="stopAllButton" type="button">Stop all sounds</button>
+        </div>
+      </section>
+
+      <div class="audition-shell">
+        <section class="sound-group" aria-labelledby="countdownHeading">
+          <div class="group-heading">
+            <p class="section-number">01</p>
+            <div>
+              <h2 id="countdownHeading">Last five seconds</h2>
+              <p>This sound plays as the timer runs down.</p>
+            </div>
+          </div>
+          <div class="option-grid">
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Mechanical tick</p>
+                <p class="sound-note">One crisp clock tick for each remaining second.</p>
+                <p class="sound-length">1 second</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="countdown-mechanical-tick">Play</button>
+                <label class="choice-label"><input type="radio" name="countdown" value="Mechanical tick"><span>Choose</span></label>
+              </div>
+              <audio id="countdown-mechanical-tick" preload="metadata" src="assets/sound-previews/countdown-mechanical-tick.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Fast wall clock</p>
+                <p class="sound-note">Rapid mechanical ticking with more urgency.</p>
+                <p class="sound-length">2 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="countdown-fast-wall-clock">Play</button>
+                <label class="choice-label"><input type="radio" name="countdown" value="Fast wall clock"><span>Choose</span></label>
+              </div>
+              <audio id="countdown-fast-wall-clock" preload="metadata" src="assets/sound-previews/countdown-fast-wall-clock.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Ticking counter</p>
+                <p class="sound-note">A steady six-second countdown with clear beats.</p>
+                <p class="sound-length">6 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="countdown-ticking-counter">Play</button>
+                <label class="choice-label"><input type="radio" name="countdown" value="Ticking counter"><span>Choose</span></label>
+              </div>
+              <audio id="countdown-ticking-counter" preload="metadata" src="assets/sound-previews/countdown-ticking-counter.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Race countdown</p>
+                <p class="sound-note">A short sports-style countdown with a strong finish.</p>
+                <p class="sound-length">3 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="countdown-race">Play</button>
+                <label class="choice-label"><input type="radio" name="countdown" value="Race countdown"><span>Choose</span></label>
+              </div>
+              <audio id="countdown-race" preload="metadata" src="assets/sound-previews/countdown-race.wav"></audio>
+            </article>
+          </div>
+        </section>
+
+        <section class="sound-group" aria-labelledby="timeHeading">
+          <div class="group-heading">
+            <p class="section-number">02</p>
+            <div>
+              <h2 id="timeHeading">Time is up</h2>
+              <p>This is the loud buzzer when the timer reaches zero.</p>
+            </div>
+          </div>
+          <div class="option-grid">
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Basketball buzzer</p>
+                <p class="sound-note">A loud arena buzzer with a long finish.</p>
+                <p class="sound-length">4 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="time-basketball-buzzer">Play</button>
+                <label class="choice-label"><input type="radio" name="time" value="Basketball buzzer"><span>Choose</span></label>
+              </div>
+              <audio id="time-basketball-buzzer" preload="metadata" src="assets/sound-previews/time-basketball-buzzer.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Hockey buzzer</p>
+                <p class="sound-note">A deeper arena horn that cuts through a noisy room.</p>
+                <p class="sound-length">4 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="time-hockey-buzzer">Play</button>
+                <label class="choice-label"><input type="radio" name="time" value="Hockey buzzer"><span>Choose</span></label>
+              </div>
+              <audio id="time-hockey-buzzer" preload="metadata" src="assets/sound-previews/time-hockey-buzzer.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Digital alarm</p>
+                <p class="sound-note">A sustained alarm for maximum urgency.</p>
+                <p class="sound-length">8 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="time-digital-alarm">Play</button>
+                <label class="choice-label"><input type="radio" name="time" value="Digital alarm"><span>Choose</span></label>
+              </div>
+              <audio id="time-digital-alarm" preload="metadata" src="assets/sound-previews/time-digital-alarm.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Bell buzzer</p>
+                <p class="sound-note">A shorter buzzer with a clear metal bell edge.</p>
+                <p class="sound-length">2 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="time-bell-buzzer">Play</button>
+                <label class="choice-label"><input type="radio" name="time" value="Bell buzzer"><span>Choose</span></label>
+              </div>
+              <audio id="time-bell-buzzer" preload="metadata" src="assets/sound-previews/time-bell-buzzer.wav"></audio>
+            </article>
+          </div>
+        </section>
+
+        <section class="sound-group" aria-labelledby="correctHeading">
+          <div class="group-heading">
+            <p class="section-number">03</p>
+            <div>
+              <h2 id="correctHeading">Correct answer</h2>
+              <p>This celebrates a player getting the answer right.</p>
+            </div>
+          </div>
+          <div class="option-grid">
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Achievement bell</p>
+                <p class="sound-note">A bright bell that is quick and polished.</p>
+                <p class="sound-length">2 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="correct-achievement-bell">Play</button>
+                <label class="choice-label"><input type="radio" name="correct" value="Achievement bell"><span>Choose</span></label>
+              </div>
+              <audio id="correct-achievement-bell" preload="metadata" src="assets/sound-previews/correct-achievement-bell.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Prize payout</p>
+                <p class="sound-note">A satisfying game-prize payout sound.</p>
+                <p class="sound-length">4 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="correct-prize-payout">Play</button>
+                <label class="choice-label"><input type="radio" name="correct" value="Prize payout"><span>Choose</span></label>
+              </div>
+              <audio id="correct-prize-payout" preload="metadata" src="assets/sound-previews/correct-prize-payout.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Group applause</p>
+                <p class="sound-note">A real group clapping and celebrating.</p>
+                <p class="sound-length">4 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="correct-group-applause">Play</button>
+                <label class="choice-label"><input type="radio" name="correct" value="Group applause"><span>Choose</span></label>
+              </div>
+              <audio id="correct-group-applause" preload="metadata" src="assets/sound-previews/correct-group-applause.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Victory crowd</p>
+                <p class="sound-note">A big, loud crowd cheering a win.</p>
+                <p class="sound-length">10 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="correct-victory-crowd">Play</button>
+                <label class="choice-label"><input type="radio" name="correct" value="Victory crowd"><span>Choose</span></label>
+              </div>
+              <audio id="correct-victory-crowd" preload="metadata" src="assets/sound-previews/correct-victory-crowd.wav"></audio>
+            </article>
+          </div>
+        </section>
+
+        <section class="sound-group" aria-labelledby="wrongHeading">
+          <div class="group-heading">
+            <p class="section-number">04</p>
+            <div>
+              <h2 id="wrongHeading">Wrong answer</h2>
+              <p>This plays when a submitted answer is incorrect.</p>
+            </div>
+          </div>
+          <div class="option-grid">
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Bass buzzer</p>
+                <p class="sound-note">A low, classic quiz-show wrong-answer buzzer.</p>
+                <p class="sound-length">2 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="wrong-bass-buzzer">Play</button>
+                <label class="choice-label"><input type="radio" name="wrong" value="Bass buzzer"><span>Choose</span></label>
+              </div>
+              <audio id="wrong-bass-buzzer" preload="metadata" src="assets/sound-previews/wrong-bass-buzzer.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Game show buzz</p>
+                <p class="sound-note">A very quick, familiar wrong-answer buzz.</p>
+                <p class="sound-length">1 second</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="wrong-game-show-buzz">Play</button>
+                <label class="choice-label"><input type="radio" name="wrong" value="Game show buzz"><span>Choose</span></label>
+              </div>
+              <audio id="wrong-game-show-buzz" preload="metadata" src="assets/sound-previews/wrong-game-show-buzz.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Sad trombone</p>
+                <p class="sound-note">A real brass fail cue with a comic finish.</p>
+                <p class="sound-length">6 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="wrong-sad-trombone">Play</button>
+                <label class="choice-label"><input type="radio" name="wrong" value="Sad trombone"><span>Choose</span></label>
+              </div>
+              <audio id="wrong-sad-trombone" preload="metadata" src="assets/sound-previews/wrong-sad-trombone.wav"></audio>
+            </article>
+
+            <article class="sound-option">
+              <div class="option-copy">
+                <p class="sound-name">Dramatic game show</p>
+                <p class="sound-note">A longer wrong-answer cue with more impact.</p>
+                <p class="sound-length">4 seconds</p>
+              </div>
+              <div class="option-actions">
+                <button class="play-button" type="button" data-audio="wrong-dramatic-game-show">Play</button>
+                <label class="choice-label"><input type="radio" name="wrong" value="Dramatic game show"><span>Choose</span></label>
+              </div>
+              <audio id="wrong-dramatic-game-show" preload="metadata" src="assets/sound-previews/wrong-dramatic-game-show.wav"></audio>
+            </article>
+          </div>
+        </section>
+      </div>
+
+      <section class="selection-band" aria-labelledby="selectionHeading">
+        <div class="selection-inner">
+          <div>
+            <p class="eyebrow">Your picks</p>
+            <h2 id="selectionHeading">Choose one from every section</h2>
+          </div>
+          <dl class="selection-list">
+            <div><dt>Countdown</dt><dd id="countdownChoice">Not chosen</dd></div>
+            <div><dt>Time up</dt><dd id="timeChoice">Not chosen</dd></div>
+            <div><dt>Correct</dt><dd id="correctChoice">Not chosen</dd></div>
+            <div><dt>Wrong</dt><dd id="wrongChoice">Not chosen</dd></div>
+          </dl>
+          <button class="primary-button" id="copyChoicesButton" type="button" disabled>Copy my four choices</button>
+          <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="page-footer">
+      <p>Audio is stored with the Philopoly project. Source clips are licensed by <a href="https://mixkit.co/license/#sfxFree" target="_blank" rel="noreferrer">Mixkit</a>.</p>
+    </footer>
+  </body>
+</html>
