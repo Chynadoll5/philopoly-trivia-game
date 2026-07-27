@@ -17,7 +17,7 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 - `Topic Controls` turns category tabs on and off.
 - Every other playable tab is a category.
 - Each category tab needs these columns: `Level`, `Question`, `Answer`, `Accepted Variations`, `Blocked`.
-- Use `easy`, `medium`, or `difficult` in the Level column.
+- Use `easy`, `medium`, or `hard` in the Level column. Existing `difficult` entries still work.
 - Separate accepted variations with `|`, like `Michael Jackson|MJ|Mike Jackson`.
 - Set a category to `FALSE` on `Topic Controls` to hide that whole category.
 - Set a question row's `Blocked` value to `TRUE` to keep that specific question out of the game.
@@ -35,7 +35,7 @@ This folder is ready for GitHub Pages. The game is a static website, and the que
 
 - Every phone should use the same `Room`, such as `game-1`, when playing the same shared game. Type the room code and tap `Join`.
 - In live mode, the Apps Script reserves each drawn question for that room so multiple phones share the same used-question history.
-- The board has rows for every category and columns for `Easy`, `Medium`, `Difficult`, and `Random`.
+- The board has rows for every category and columns for `Easy`, `Medium`, `Hard`, and `Random`.
 - `Type answer` mode lets players type an answer and tap `Check`.
 - `Host mode` hides the typing box and lets the host use `Correct`, `Missed`, `Show answer`, `Restart timer`, `Skip`, and `End game`.
 - `Correct` and `Missed` judge the current question and then move to the next question after a short pause.

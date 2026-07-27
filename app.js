@@ -35,7 +35,7 @@ const DEMO_DATA = {
 const LEVELS = [
   { id: "easy", label: "Easy", diamonds: "◆" },
   { id: "medium", label: "Medium", diamonds: "◆◆" },
-  { id: "difficult", label: "Difficult", diamonds: "◆◆◆" },
+  { id: "difficult", label: "Hard", diamonds: "◆◆◆" },
   { id: "surprise", label: "Random", diamonds: "" }
 ];
 
