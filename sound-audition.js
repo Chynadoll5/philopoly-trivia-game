@@ -1,3 +1,21 @@
+const GAME_SOUND_STORAGE_KEY = "philopoly-trivia-game:sound-settings";
+const GAME_SOUND_PROFILE_VERSION = "recorded-v1";
+const GAME_SOUND_CHANNELS = {
+  countdown: "tick",
+  time: "buzzer",
+  correct: "correct",
+  wrong: "missed"
+};
+const DEFAULT_GAME_SOUND_SETTINGS = {
+  volume: 1,
+  muted: false,
+  soundProfileVersion: GAME_SOUND_PROFILE_VERSION,
+  tick: "countdown-mechanical-tick",
+  buzzer: "time-basketball-buzzer",
+  correct: "correct-group-applause",
+  missed: "wrong-bass-buzzer"
+};
+
 const SOUND_LIBRARY = {
   countdown: {
     containerId: "countdownOptions",
@@ -61,11 +79,37 @@ const SOUND_LIBRARY = {
   }
 };
 
+function loadGameSoundSettings() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(GAME_SOUND_STORAGE_KEY) || "{}");
+    if (saved.soundProfileVersion !== GAME_SOUND_PROFILE_VERSION) {
+      return { ...DEFAULT_GAME_SOUND_SETTINGS, muted: Boolean(saved.muted) };
+    }
+    return {
+      ...DEFAULT_GAME_SOUND_SETTINGS,
+      ...saved,
+      volume: Math.max(0, Math.min(1, Number(saved.volume ?? 1))),
+      muted: Boolean(saved.muted)
+    };
+  } catch {
+    return { ...DEFAULT_GAME_SOUND_SETTINGS };
+  }
+}
+
+function saveGameSoundSettings() {
+  window.localStorage.setItem(GAME_SOUND_STORAGE_KEY, JSON.stringify(gameSoundSettings));
+}
+
+let gameSoundSettings = loadGameSoundSettings();
+
 function renderSoundLibrary() {
   Object.entries(SOUND_LIBRARY).forEach(([groupName, group]) => {
     const container = document.getElementById(group.containerId);
-    container.innerHTML = group.options.map((option) => `
-      <article class="sound-option">
+    const channel = GAME_SOUND_CHANNELS[groupName];
+    container.innerHTML = group.options.map((option) => {
+      const isSelected = gameSoundSettings[channel] === option.id;
+      return `
+      <article class="sound-option${isSelected ? " is-selected" : ""}">
         <div class="option-copy">
           <p class="sound-name">${option.name}</p>
           <p class="sound-note">${option.note}</p>
@@ -74,13 +118,14 @@ function renderSoundLibrary() {
         <div class="option-actions">
           <button class="play-button" type="button" data-audio="${option.id}" aria-pressed="false">Play</button>
           <label class="choice-label">
-            <input type="radio" name="${groupName}" value="${option.name}">
+            <input type="radio" name="${groupName}" value="${option.id}" data-label="${option.name}"${isSelected ? " checked" : ""}>
             <span>Choose</span>
           </label>
         </div>
-        <audio id="${option.id}" preload="metadata" src="assets/sound-previews/${option.file}"></audio>
+        <audio id="${option.id}" preload="metadata" src="assets/sound-previews/${option.file}?v=${GAME_SOUND_PROFILE_VERSION}"></audio>
       </article>
-    `).join("");
+    `;
+    }).join("");
   });
 }
 
@@ -91,7 +136,7 @@ const playButtons = Array.from(document.querySelectorAll("[data-audio]"));
 const volumeInput = document.getElementById("previewVolume");
 const volumeValue = document.getElementById("volumeValue");
 const stopAllButton = document.getElementById("stopAllButton");
-const copyChoicesButton = document.getElementById("copyChoicesButton");
+const useChoicesButton = document.getElementById("useChoicesButton");
 const copyStatus = document.getElementById("copyStatus");
 
 const choiceOutputs = {
@@ -100,6 +145,36 @@ const choiceOutputs = {
   correct: document.getElementById("correctChoice"),
   wrong: document.getElementById("wrongChoice")
 };
+
+function syncSelectionUi(status = "") {
+  Object.keys(choiceOutputs).forEach((groupName) => {
+    const selected = document.querySelector(`input[name="${groupName}"]:checked`);
+    choiceOutputs[groupName].textContent = selected?.dataset.label || "Not chosen";
+    document.querySelectorAll(`input[name="${groupName}"]`).forEach((radio) => {
+      radio.closest(".sound-option")?.classList.toggle("is-selected", radio.checked);
+    });
+  });
+  const allChosen = Object.keys(choiceOutputs).every((name) =>
+    Boolean(document.querySelector(`input[name="${name}"]:checked`))
+  );
+  useChoicesButton.disabled = !allChosen;
+  copyStatus.textContent = status;
+}
+
+function applyStoredSettingsToBoard() {
+  Object.entries(GAME_SOUND_CHANNELS).forEach(([groupName, channel]) => {
+    const selected = document.querySelector(`input[name="${groupName}"][value="${gameSoundSettings[channel]}"]`);
+    if (selected) selected.checked = true;
+  });
+  const percent = Math.round(gameSoundSettings.volume * 100);
+  volumeInput.value = String(percent);
+  volumeValue.value = `${percent}%`;
+  volumeValue.textContent = `${percent}%`;
+  audioPlayers.forEach((player) => {
+    player.volume = gameSoundSettings.volume;
+  });
+  syncSelectionUi();
+}
 
 function resetPlayerUi(player) {
   const button = document.querySelector(`[data-audio="${player.id}"]`);
@@ -148,10 +223,12 @@ playButtons.forEach((button) => {
 });
 
 audioPlayers.forEach((player) => {
-  player.volume = 1;
+  player.volume = gameSoundSettings.volume;
   player.addEventListener("ended", () => resetPlayerUi(player));
   player.addEventListener("error", () => resetPlayerUi(player));
 });
+
+applyStoredSettingsToBoard();
 
 volumeInput.addEventListener("input", () => {
   const value = Number(volumeInput.value);
@@ -161,44 +238,32 @@ volumeInput.addEventListener("input", () => {
   });
   volumeValue.value = `${value}%`;
   volumeValue.textContent = `${value}%`;
+  gameSoundSettings.volume = volume;
+  saveGameSoundSettings();
+  copyStatus.textContent = "Volume saved for Philopoly.";
 });
 
 stopAllButton.addEventListener("click", () => stopAllPlayers());
 
 document.querySelectorAll('input[type="radio"]').forEach((radio) => {
   radio.addEventListener("change", () => {
-    document.querySelectorAll(`input[name="${radio.name}"]`).forEach((groupRadio) => {
-      groupRadio.closest(".sound-option")?.classList.toggle("is-selected", groupRadio.checked);
-    });
-
-    choiceOutputs[radio.name].textContent = radio.value;
-    const allChosen = Object.keys(choiceOutputs).every((name) =>
-      Boolean(document.querySelector(`input[name="${name}"]:checked`))
-    );
-    copyChoicesButton.disabled = !allChosen;
-    copyStatus.textContent = "";
+    const channel = GAME_SOUND_CHANNELS[radio.name];
+    if (channel) gameSoundSettings[channel] = radio.value;
+    gameSoundSettings.soundProfileVersion = GAME_SOUND_PROFILE_VERSION;
+    saveGameSoundSettings();
+    syncSelectionUi(`${radio.dataset.label} saved for Philopoly.`);
   });
 });
 
-copyChoicesButton.addEventListener("click", async () => {
-  const labels = {
-    countdown: "Last five seconds",
-    time: "Time is up",
-    correct: "Correct answer",
-    wrong: "Wrong answer"
-  };
-  const text = [
-    "My Philopoly sound choices:",
-    ...Object.keys(labels).map((name) => {
-      const choice = document.querySelector(`input[name="${name}"]:checked`);
-      return `${labels[name]}: ${choice?.value || "Not chosen"}`;
-    })
-  ].join("\n");
-
-  try {
-    await navigator.clipboard.writeText(text);
-    copyStatus.textContent = "Copied. Paste the list into our chat.";
-  } catch (error) {
-    copyStatus.textContent = text;
-  }
+useChoicesButton.addEventListener("click", () => {
+  saveGameSoundSettings();
+  window.location.href = "./?sounds=updated";
 });
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== GAME_SOUND_STORAGE_KEY) return;
+  gameSoundSettings = loadGameSoundSettings();
+  applyStoredSettingsToBoard();
+  copyStatus.textContent = "Philopoly sound choices updated.";
+});
+
