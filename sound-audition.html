@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,750&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="sound-audition.css?v=20260721-2">
-    <script defer src="sound-audition.js?v=20260721-2"></script>
+    <script defer src="sound-audition.js?v=20260823-1"></script>
   </head>
   <body>
     <header class="page-header">
@@ -29,8 +29,8 @@
     <main>
       <section class="notice-band" aria-label="Preview notice">
         <div class="notice-inner">
-          <strong>Preview only</strong>
-          <span>Nothing here changes the live game. I will install your four winners after you choose them.</span>
+          <strong>Choose and save</strong>
+          <span>Your choices and volume are saved for Philopoly as soon as you select them.</span>
         </div>
       </section>
 
@@ -103,7 +103,7 @@
             <div><dt>Correct</dt><dd id="correctChoice">Not chosen</dd></div>
             <div><dt>Wrong</dt><dd id="wrongChoice">Not chosen</dd></div>
           </dl>
-          <button class="primary-button" id="copyChoicesButton" type="button" disabled>Copy my four choices</button>
+          <button class="primary-button" id="useChoicesButton" type="button" disabled>Use these sounds in Philopoly</button>
           <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
         </div>
       </section>
@@ -114,3 +114,4 @@
     </footer>
   </body>
 </html>
+
