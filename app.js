@@ -122,6 +122,8 @@ const DEFAULT_SOUND_SETTINGS = {
   missed: "wrong-bass-buzzer"
 };
 
+const SILENT_WAV_SOURCE = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQQAAAAAAAAA";
+
 const DEFAULT_CONFIG = {
   dataUrl: "https://script.google.com/macros/s/AKfycbwavxh7EUvWiAUBbu356EUn3LwH0EENq1tWGfTH1d_S7MBZKgPjGbihCRaWEodl8oBn/exec",
   spreadsheetId: "1b6_V2o3BThSVcRt0YJG4Y_sTqerqP6Zbw6s2Ef0CVlE",
@@ -167,7 +169,13 @@ const state = {
   activeRuleMatchIndex: -1,
   activeSoundPlayer: null,
   activeSoundChannel: "",
-  activeSoundStopTimerId: null
+  activeSoundStopTimerId: null,
+  recordedSoundPlayer: null,
+  soundUnlockPromise: null,
+  soundUnlockAttemptId: 0,
+  soundPlaybackId: 0,
+  soundPreloaders: [],
+  preloadedSoundUrls: new Set()
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -258,6 +266,7 @@ function cacheElements() {
 function bindEvents() {
   document.addEventListener("pointerdown", unlockAudio, { once: true });
   document.addEventListener("keydown", handleKeyboard);
+  window.addEventListener("storage", handleSoundStorageChange);
   els.rulesButton.addEventListener("click", openRulesOverlay);
   els.closeRulesButton.addEventListener("click", closeRulesOverlay);
   els.refreshRulesButton.addEventListener("click", refreshRulesBook);
@@ -1433,6 +1442,7 @@ function renderSoundSettings() {
       saveSoundSettings();
       const description = els.soundChannels.querySelector(`[data-sound-description="${channel}"]`);
       if (description) description.innerHTML = soundOptionDescription(channel);
+      preloadSelectedSound(channel);
       playTone(channel);
     });
   });
@@ -1496,14 +1506,104 @@ function saveSoundSettings() {
   window.localStorage.setItem(soundKey(), JSON.stringify(state.soundSettings));
 }
 
+function handleSoundStorageChange(event) {
+  if (event.key !== soundKey()) return;
+  loadSoundSettings();
+  if (state.activeSoundPlayer) {
+    state.activeSoundPlayer.volume = state.soundSettings.volume;
+  }
+  if (els.soundOverlay && !els.soundOverlay.classList.contains("hidden")) {
+    renderSoundSettings();
+  }
+}
+
 function unlockAudio() {
   const AudioContext = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContext) return;
-  state.audioContext = state.audioContext || new AudioContext();
-  if (state.audioContext.state === "suspended") {
-    state.audioContext.resume().catch(() => null);
+  if (AudioContext) {
+    if (!state.audioContext || state.audioContext.state === "closed") {
+      state.audioContext = new AudioContext();
+    }
+    if (state.audioContext.state === "suspended") {
+      state.audioContext.resume().catch(() => null);
+    }
+    primeAudioContext(state.audioContext);
   }
-  state.soundUnlocked = true;
+  primeRecordedSoundPlayer();
+}
+
+function primeAudioContext(context) {
+  try {
+    const source = context.createBufferSource();
+    source.buffer = context.createBuffer(1, 1, 22050);
+    source.connect(context.destination);
+    source.start(0);
+  } catch {
+    // A future tap can retry if this browser has not unlocked Web Audio yet.
+  }
+}
+
+function getRecordedSoundPlayer() {
+  if (state.recordedSoundPlayer) return state.recordedSoundPlayer;
+  const player = new Audio();
+  player.preload = "auto";
+  player.setAttribute("playsinline", "");
+  player.setAttribute("webkit-playsinline", "");
+  player.setAttribute("aria-hidden", "true");
+  player.tabIndex = -1;
+  document.body.appendChild(player);
+  state.recordedSoundPlayer = player;
+  return player;
+}
+
+function primeRecordedSoundPlayer() {
+  if (state.soundUnlocked || state.soundUnlockPromise || state.activeSoundPlayer) return;
+  const player = getRecordedSoundPlayer();
+  const attemptId = ++state.soundUnlockAttemptId;
+  player.pause();
+  player.loop = false;
+  player.muted = false;
+  player.volume = 1;
+  player.src = SILENT_WAV_SOURCE;
+  player.load();
+
+  const unlockPromise = player.play()
+    .then(() => {
+      if (attemptId !== state.soundUnlockAttemptId || state.activeSoundPlayer) return;
+      state.soundUnlocked = true;
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+      preloadSelectedSounds();
+    })
+    .catch(() => null)
+    .finally(() => {
+      if (state.soundUnlockPromise === unlockPromise) state.soundUnlockPromise = null;
+    });
+  state.soundUnlockPromise = unlockPromise;
+}
+
+function soundFileUrl(file) {
+  const version = encodeURIComponent(DEFAULT_SOUND_SETTINGS.soundProfileVersion);
+  return new URL(`assets/sound-previews/${file}?v=${version}`, document.baseURI).href;
+}
+
+function preloadSelectedSounds() {
+  Object.keys(SOUND_OPTIONS).forEach(preloadSelectedSound);
+}
+
+function preloadSelectedSound(channel) {
+  const selected = SOUND_OPTIONS[channel]?.options.find((option) => option.value === state.soundSettings[channel]);
+  if (!selected?.file) return;
+  const url = soundFileUrl(selected.file);
+  if (state.preloadedSoundUrls.has(url)) return;
+  state.preloadedSoundUrls.add(url);
+
+  const preloader = new Audio();
+  preloader.preload = "auto";
+  preloader.src = url;
+  preloader.load();
+  state.soundPreloaders.push(preloader);
+  if (state.soundPreloaders.length > 8) state.soundPreloaders.shift();
 }
 
 function playTone(channel, overrideValue) {
@@ -1532,14 +1632,20 @@ function playTone(channel, overrideValue) {
 
 function playRecordedSound(channel, file) {
   stopRecordedSound();
-  const player = new Audio(`assets/sound-previews/${file}`);
-  player.preload = "auto";
+  state.soundUnlockAttemptId += 1;
+  state.soundUnlockPromise = null;
+  const player = getRecordedSoundPlayer();
+  const playbackId = ++state.soundPlaybackId;
+  player.pause();
+  player.loop = false;
+  player.muted = false;
   player.volume = state.soundSettings.volume;
+  player.src = soundFileUrl(file);
   state.activeSoundPlayer = player;
   state.activeSoundChannel = channel;
 
   const configureCountdown = () => {
-    if (state.activeSoundPlayer !== player) return;
+    if (state.activeSoundPlayer !== player || state.soundPlaybackId !== playbackId) return;
     if (channel === "tick") {
       const duration = Number(player.duration);
       if (Number.isFinite(duration) && duration > 5.25) {
@@ -1551,17 +1657,31 @@ function playRecordedSound(channel, file) {
     }
   };
 
-  player.addEventListener("loadedmetadata", configureCountdown, { once: true });
-  player.addEventListener("ended", () => {
-    if (state.activeSoundPlayer === player) stopRecordedSound(channel);
-  });
+  const handleFailure = (error) => {
+    if (state.activeSoundPlayer !== player || state.soundPlaybackId !== playbackId) return;
+    console.warn(`Could not play ${channel} recording. Using backup sound.`, error);
+    stopRecordedSound(channel);
+    playRecordedFallback(channel);
+    if (els.soundOverlay && !els.soundOverlay.classList.contains("hidden")) {
+      showToast("That recording could not play. Using the backup sound.");
+    }
+  };
+
+  player.onloadedmetadata = configureCountdown;
+  player.onended = () => {
+    if (state.activeSoundPlayer === player && state.soundPlaybackId === playbackId) stopRecordedSound(channel);
+  };
+  player.onerror = () => handleFailure(player.error || new Error("Audio file failed to load."));
+  player.load();
   if (player.readyState >= 1) configureCountdown();
   player.play()
-    .then(updateSoundPreviewButtons)
-    .catch(() => {
-      stopRecordedSound(channel);
-      playRecordedFallback(channel);
-    });
+    .then(() => {
+      if (state.activeSoundPlayer !== player || state.soundPlaybackId !== playbackId) return;
+      state.soundUnlocked = true;
+      preloadSelectedSounds();
+      updateSoundPreviewButtons();
+    })
+    .catch(handleFailure);
   updateSoundPreviewButtons();
 }
 
@@ -1574,8 +1694,13 @@ function stopRecordedSound(channel = "") {
   const player = state.activeSoundPlayer;
   state.activeSoundPlayer = null;
   state.activeSoundChannel = "";
+  state.soundPlaybackId += 1;
   if (player) {
+    player.onloadedmetadata = null;
+    player.onended = null;
+    player.onerror = null;
     player.pause();
+    player.loop = false;
     try {
       player.currentTime = 0;
     } catch {
@@ -1918,3 +2043,4 @@ function escapeHtml(value) {
     "'": "&#39;"
   })[char]);
 }
+
